@@ -1,26 +1,65 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  --color-honey-50: #FFFEF7;
+  --color-honey-100: #FFFBE6;
+  --color-honey-200: #FFF4BF;
+  --color-honey-300: #FFEC99;
+  --color-honey-400: #FFE066;
+  --color-honey-500: #FFD633;
+  --color-honey-600: #E6BC1A;
+  --color-honey-700: #BF9A14;
+  --color-honey-800: #997A10;
+  --color-honey-900: #735B0C;
+  --color-honey-950: #4D3C08;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --background: #FFFEF7;
+  --foreground: #1a1a1a;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* Custom component classes */
+@layer components {
+  .page-title {
+    @apply text-2xl font-bold text-gray-900;
+  }
+  .section-title {
+    @apply text-lg font-semibold text-gray-800;
+  }
+  .form-group {
+    @apply space-y-4;
+  }
+  .form-row {
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-4;
+  }
+  .form-actions {
+    @apply flex justify-end gap-3;
+  }
+}
+
+/* Custom scrollbar */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-honey-300) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--color-honey-300);
+    border-radius: 3px;
+  }
 }
