@@ -8,13 +8,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Anne's Recepten",
+  title: "Recepten van Anne",
   description: "Anne's persoonlijke receptenverzameling",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Anne's Recepten",
+    title: "Recepten van Anne",
   },
 };
 
@@ -22,6 +22,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  viewportFit: "cover",
   themeColor: "#FFD633",
 };
 

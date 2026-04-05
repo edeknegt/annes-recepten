@@ -8,8 +8,8 @@ export default function AppLayout({
   return (
     <div className="min-h-screen bg-honey-50/30">
       <Sidebar />
-      <main className="lg:ml-64 pt-16 lg:pt-0">
-        <div className="p-4 sm:p-6 lg:p-8">
+      <main className="lg:ml-64 pb-24 lg:pb-0">
+        <div className="px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
           {children}
         </div>
       </main>

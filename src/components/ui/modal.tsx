@@ -40,6 +40,9 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
       }}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? 'modal-title' : undefined}
         className={cn(
           'bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto',
           className
@@ -47,7 +50,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
       >
         {title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+            <h2 id="modal-title" className="text-lg font-semibold text-gray-900">{title}</h2>
             <button
               onClick={onClose}
               className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"

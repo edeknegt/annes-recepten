@@ -1,66 +1,190 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { CookingPot, Lock } from 'lucide-react'
+import { useState, useTransition, useEffect, useCallback } from 'react'
+import { Delete } from 'lucide-react'
 import { verifyPin } from './actions'
-import { Button } from '@/components/ui/button'
+
+const PIN_LENGTH = 4
+
+const rows = [
+  ['1', '2', '3'],
+  ['4', '5', '6'],
+  ['7', '8', '9'],
+  [null, '0', 'back'],
+]
 
 export default function PinPage() {
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [pin, setPin] = useState('')
+  const [pressedKey, setPressedKey] = useState<string | null>(null)
 
-  async function handleSubmit(formData: FormData) {
+  const submit = useCallback((fullPin: string) => {
     setError(null)
+    const formData = new FormData()
+    formData.set('pin', fullPin)
     startTransition(async () => {
       const result = await verifyPin(formData)
       if (result?.error) {
         setError(result.error)
+        setPin('')
       }
     })
-  }
+  }, [startTransition])
+
+  const handleDigit = useCallback((digit: string) => {
+    if (isPending || pin.length >= PIN_LENGTH) return
+    setPressedKey(digit)
+    setTimeout(() => setPressedKey(null), 200)
+    const newPin = pin + digit
+    setPin(newPin)
+    if (newPin.length === PIN_LENGTH) {
+      setTimeout(() => submit(newPin), 150)
+    }
+  }, [isPending, pin, submit])
+
+  const handleBackspace = useCallback(() => {
+    if (isPending) return
+    setPin(prev => prev.slice(0, -1))
+    setError(null)
+  }, [isPending])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key >= '0' && e.key <= '9') handleDigit(e.key)
+      else if (e.key === 'Backspace') handleBackspace()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleDigit, handleBackspace])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-honey-50 to-honey-100 p-4">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white shadow-sm border border-honey-200 mb-4">
-            <CookingPot className="h-10 w-10 text-honey-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">Anne&apos;s Recepten</h1>
-          <p className="text-sm text-gray-500 mt-1">Voer je pincode in om verder te gaan</p>
+    <div
+      style={{
+        minHeight: '100dvh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        backgroundColor: '#FFFBE6',
+      }}
+    >
+      {/* Background photo — full screen including status bar area */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: 'url(/erik-anne-eten.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          opacity: 0.6,
+        }}
+      />
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'linear-gradient(to bottom, rgba(255,251,230,0.15) 0%, rgba(255,251,230,0.5) 50%, rgba(255,251,230,0.92) 100%)',
+        }}
+      />
+
+      {/* Content */}
+      <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#111' }}>Recepten van Anne</h1>
+        <p style={{ fontSize: '14px', color: '#666', marginTop: '4px', marginBottom: '32px' }}>Voer je pincode in</p>
+
+        {/* PIN dots */}
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '12px' }}>
+          {Array.from({ length: PIN_LENGTH }).map((_, i) => (
+            <div
+              key={i}
+              style={{
+                width: '14px',
+                height: '14px',
+                borderRadius: '50%',
+                transition: 'all 0.15s',
+                ...(i < pin.length
+                  ? { backgroundColor: '#BF9A14' }
+                  : { border: '2px solid #ccc', backgroundColor: 'transparent' }
+                ),
+              }}
+            />
+          ))}
         </div>
 
-        {/* PIN Form */}
-        <form action={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-honey-200 p-6">
-          <div className="mb-4">
-            <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-2">
-              <Lock className="inline h-4 w-4 mr-1 -mt-0.5" />
-              Pincode
-            </label>
-            <input
-              id="pin"
-              name="pin"
-              type="password"
-              inputMode="numeric"
-              autoComplete="current-password"
-              required
-              autoFocus
-              placeholder="••••"
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-center text-2xl tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-honey-500 focus:border-honey-500 placeholder:tracking-[0.3em] placeholder:text-gray-300"
-            />
-          </div>
+        {/* Error */}
+        <div style={{ height: '28px', display: 'flex', alignItems: 'center' }}>
+          {error && <p style={{ fontSize: '14px', color: '#ef4444', fontWeight: 500 }}>{error}</p>}
+        </div>
 
-          {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600 text-center">
-              {error}
-            </div>
-          )}
-
-          <Button type="submit" className="w-full" size="lg" loading={isPending}>
-            Openen
-          </Button>
-        </form>
+        {/* Number pad */}
+        <table style={{ borderSpacing: '12px', borderCollapse: 'separate', marginTop: '8px' }}>
+          <tbody>
+            {rows.map((row, ri) => (
+              <tr key={ri}>
+                {row.map((key, ci) => (
+                  <td key={ci} style={{ padding: 0 }}>
+                    {key === null ? (
+                      <div style={{ width: '72px', height: '52px' }} />
+                    ) : key === 'back' ? (
+                      <button
+                        type="button"
+                        onClick={handleBackspace}
+                        disabled={isPending || pin.length === 0}
+                        style={{
+                          width: '72px',
+                          height: '52px',
+                          borderRadius: '12px',
+                          border: 'none',
+                          background: 'transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          opacity: pin.length === 0 ? 0.3 : 1,
+                          WebkitTapHighlightColor: 'transparent',
+                        }}
+                      >
+                        <Delete style={{ width: '20px', height: '20px', color: '#999' }} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleDigit(key)}
+                        disabled={isPending}
+                        style={{
+                          width: '72px',
+                          height: '52px',
+                          borderRadius: '12px',
+                          border: '1px solid rgba(0,0,0,0.06)',
+                          background: pressedKey === key ? '#FFD633' : 'rgba(255,255,255,0.65)',
+                          backdropFilter: 'blur(4px)',
+                          fontSize: '22px',
+                          fontWeight: 600,
+                          color: pressedKey === key ? '#4D3C08' : '#333',
+                          cursor: 'pointer',
+                          transition: 'background 0.1s, color 0.1s',
+                          WebkitTapHighlightColor: 'transparent',
+                        }}
+                      >
+                        {key}
+                      </button>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )

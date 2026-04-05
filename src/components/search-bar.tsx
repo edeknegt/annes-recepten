@@ -46,6 +46,7 @@ export function SearchBar({ categories }: SearchBarProps) {
         <input
           type="text"
           placeholder="Zoek recepten..."
+          aria-label="Zoek recepten"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-honey-500 focus:border-honey-500"
@@ -53,6 +54,7 @@ export function SearchBar({ categories }: SearchBarProps) {
         {query && (
           <button
             onClick={() => setQuery('')}
+            aria-label="Wis zoekopdracht"
             className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-gray-600"
           >
             <X className="h-4 w-4" />

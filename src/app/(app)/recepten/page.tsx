@@ -43,13 +43,15 @@ export default async function RecipesPage({ searchParams }: PageProps) {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="page-title">Recepten</h1>
-      </div>
+      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 bg-honey-50/80 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="page-title">Recepten</h1>
+        </div>
 
-      <Suspense fallback={<div>Laden...</div>}>
-        <SearchBar categories={categories || []} />
-      </Suspense>
+        <Suspense fallback={<div>Laden...</div>}>
+          <SearchBar categories={categories || []} />
+        </Suspense>
+      </div>
 
       {/* Recipe grid */}
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -67,17 +69,13 @@ export default async function RecipesPage({ searchParams }: PageProps) {
                 {recipe.title}
               </h3>
 
-              {recipe.description && (
-                <p className="text-sm text-gray-500 mb-3 line-clamp-2">
-                  {recipe.description}
-                </p>
-              )}
+
 
               <div className="flex items-center gap-3 text-sm text-gray-500">
-                {(recipe.prep_time || recipe.cook_time) && (
+                {recipe.prep_time && (
                   <span className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
-                    {(recipe.prep_time || 0) + (recipe.cook_time || 0)} min
+                    {recipe.prep_time} min
                   </span>
                 )}
                 <span className="flex items-center gap-1">

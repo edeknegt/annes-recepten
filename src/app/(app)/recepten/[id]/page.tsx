@@ -43,100 +43,121 @@ export default async function RecipeDetailPage({ params }: PageProps) {
     (a: { step_number: number }, b: { step_number: number }) => a.step_number - b.step_number
   )
 
-  const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0)
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Back link */}
-      <Link
-        href="/recepten"
-        className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Terug naar recepten
-      </Link>
+      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 bg-honey-50/80 backdrop-blur-sm">
+        {/* Back link */}
+        <Link
+          href="/recepten"
+          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Terug naar recepten
+        </Link>
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{recipe.title}</h1>
-          {recipe.description && (
-            <p className="text-gray-600">{recipe.description}</p>
-          )}
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{recipe.title}</h1>
 
-          {/* Badges */}
-          <div className="flex flex-wrap gap-2 mt-3">
-            {recipe.category && <Badge>{recipe.category.name}</Badge>}
-            {subcategories.map((sub: { id: string; name: string }) => (
-              <Badge key={sub.id} variant="warning">{sub.name}</Badge>
-            ))}
+            {/* Badges */}
+            <div className="flex flex-wrap gap-2 mt-3">
+              {recipe.category && <Badge>{recipe.category.name}</Badge>}
+              {subcategories.map((sub: { id: string; name: string }) => (
+                <Badge key={sub.id} variant="warning">{sub.name}</Badge>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Action buttons */}
-        <div className="flex gap-2 shrink-0">
-          <Link href={`/recepten/${id}/bewerken`}>
-            <Button variant="outline" size="sm">
-              <Pencil className="h-4 w-4 mr-1" />
-              Bewerken
-            </Button>
-          </Link>
-          <DeleteRecipeButton recipeId={id} />
+          {/* Action buttons */}
+          <div className="flex gap-2 shrink-0">
+            <Link href={`/recepten/${id}/bewerken`}>
+              <Button variant="outline" size="sm">
+                <Pencil className="h-4 w-4 mr-1" />
+                Bewerken
+              </Button>
+            </Link>
+            <DeleteRecipeButton recipeId={id} />
+          </div>
         </div>
       </div>
 
-      {/* Time info */}
-      {totalTime > 0 && (
-        <div className="flex flex-wrap gap-4 mb-6">
-          {recipe.prep_time && (
-            <Card className="flex-1 min-w-[140px]">
-              <CardContent className="py-3 px-4 text-center">
-                <div className="flex items-center justify-center gap-1 text-honey-700 mb-1">
-                  <Clock className="h-4 w-4" />
-                  <span className="text-xs font-medium">Voorbereiding</span>
-                </div>
-                <p className="text-lg font-semibold text-gray-900">{recipe.prep_time} min</p>
-              </CardContent>
-            </Card>
-          )}
-          {recipe.cook_time && (
-            <Card className="flex-1 min-w-[140px]">
-              <CardContent className="py-3 px-4 text-center">
-                <div className="flex items-center justify-center gap-1 text-honey-700 mb-1">
-                  <Clock className="h-4 w-4" />
-                  <span className="text-xs font-medium">Bereidingstijd</span>
-                </div>
-                <p className="text-lg font-semibold text-gray-900">{recipe.cook_time} min</p>
-              </CardContent>
-            </Card>
-          )}
-          {recipe.prep_time && recipe.cook_time && (
-            <Card className="flex-1 min-w-[140px]">
-              <CardContent className="py-3 px-4 text-center">
-                <div className="flex items-center justify-center gap-1 text-honey-700 mb-1">
-                  <Clock className="h-4 w-4" />
-                  <span className="text-xs font-medium">Totaal</span>
-                </div>
-                <p className="text-lg font-semibold text-gray-900">{totalTime} min</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Ingredients */}
-        <Card className="lg:col-span-2">
-          <CardContent className="py-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Ingredi&euml;nten</h2>
-            <ServingAdjuster
-              originalServings={recipe.servings}
-              ingredients={ingredients}
-            />
-          </CardContent>
-        </Card>
+        {/* Left column: bereidingstijd + ingrediënten */}
+        <div className="lg:col-span-2 space-y-6">
+          {recipe.prep_time && (() => {
+            const fraction = Math.min(recipe.prep_time / 60, 1)
+            const angle = fraction * 360
+            const rad = (a: number) => ((a - 90) * Math.PI) / 180
+            const x = 50 + 40 * Math.cos(rad(angle))
+            const y = 50 + 40 * Math.sin(rad(angle))
+            const largeArc = angle > 180 ? 1 : 0
+            const piePath = angle >= 360
+              ? 'M50,50 m0,-40 a40,40 0 1,1 0,80 a40,40 0 1,1 0,-80 Z'
+              : `M50,50 L50,10 A40,40 0 ${largeArc},1 ${x},${y} Z`
 
-        {/* Steps */}
+            return (
+              <Card>
+                <CardContent className="py-5 flex items-center gap-4 px-5">
+                  {/* Clock face */}
+                  <div className="relative w-20 h-20 shrink-0">
+                    <svg viewBox="0 0 100 100" className="w-full h-full">
+                      {/* Clock background */}
+                      <circle cx="50" cy="50" r="46" fill="white" stroke="#E5E7EB" strokeWidth="2" />
+                      {/* Filled pie slice */}
+                      <path d={piePath} fill="#FFD633" opacity="0.6" />
+                      {/* Hour ticks */}
+                      {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => (
+                        <line
+                          key={deg}
+                          x1={50 + 38 * Math.cos(rad(deg))}
+                          y1={50 + 38 * Math.sin(rad(deg))}
+                          x2={50 + 43 * Math.cos(rad(deg))}
+                          y2={50 + 43 * Math.sin(rad(deg))}
+                          stroke="#9CA3AF"
+                          strokeWidth={deg % 90 === 0 ? 2.5 : 1.5}
+                          strokeLinecap="round"
+                        />
+                      ))}
+                      {/* Clock hand */}
+                      <line
+                        x1="50" y1="50"
+                        x2={50 + 34 * Math.cos(rad(angle))}
+                        y2={50 + 34 * Math.sin(rad(angle))}
+                        stroke="#4D3C08"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                      />
+                      {/* Center dot */}
+                      <circle cx="50" cy="50" r="3" fill="#4D3C08" />
+                      {/* Outer ring */}
+                      <circle cx="50" cy="50" r="46" fill="none" stroke="#BF9A14" strokeWidth="2.5" />
+                    </svg>
+                  </div>
+
+                  {/* Text */}
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">{recipe.prep_time} min</p>
+                    <p className="text-sm text-honey-700 font-medium">Bereidingstijd</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })()}
+
+          <Card>
+            <CardContent className="py-5">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Ingredi&euml;nten</h2>
+              <ServingAdjuster
+                originalServings={recipe.servings}
+                ingredients={ingredients}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right column: bereiding */}
         <Card className="lg:col-span-3">
           <CardContent className="py-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Bereiding</h2>

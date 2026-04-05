@@ -25,7 +25,14 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
 }
+
+/* Eliminate touch delay and speed up transitions on interactive elements */
+a, button, [role="button"], input, select, textarea {
+  touch-action: manipulation;
+}
+
 
 /* Custom component classes */
 @layer components {
@@ -44,6 +51,20 @@ body {
   .form-actions {
     @apply flex justify-end gap-3;
   }
+}
+
+/* PIN digit animation */
+@keyframes fade-in {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-fade-in {
+  animation: fade-in 0.15s ease-out;
+}
+
+/* Safe area for iPhone home indicator */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Custom scrollbar */

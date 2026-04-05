@@ -26,3 +26,16 @@ export async function verifyPin(formData: FormData) {
 
   redirect('/')
 }
+
+export async function logout() {
+  const cookieStore = await cookies()
+  cookieStore.set('annes-recepten-auth', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 0,
+    path: '/',
+  })
+
+  redirect('/pin')
+}

@@ -6,10 +6,11 @@ import { Plus, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
+import { RecipeImport } from '@/components/recipe-import'
 import { cn } from '@/lib/utils'
 import type { Category, Subcategory, Recipe, Ingredient, Step } from '@/lib/types'
+import type { ImportedRecipe } from '@/app/(app)/recepten/nieuw/actions'
 
 interface IngredientRow {
   id?: string
@@ -40,10 +41,8 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
 
   // Form state
   const [title, setTitle] = useState(recipe?.title || '')
-  const [description, setDescription] = useState(recipe?.description || '')
   const [prepTime, setPrepTime] = useState(recipe?.prep_time?.toString() || '')
-  const [cookTime, setCookTime] = useState(recipe?.cook_time?.toString() || '')
-  const [servings, setServings] = useState(recipe?.servings?.toString() || '4')
+  const [servings, setServings] = useState(recipe?.servings?.toString() || '')
   const [source, setSource] = useState(recipe?.source || '')
   const [sourceUrl, setSourceUrl] = useState(recipe?.source_url || '')
   const [categoryId, setCategoryId] = useState(recipe?.category_id || '')
@@ -141,10 +140,8 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
 
       const recipeData = {
         title: title.trim(),
-        description: description.trim() || null,
         prep_time: prepTime ? parseInt(prepTime) : null,
-        cook_time: cookTime ? parseInt(cookTime) : null,
-        servings: parseInt(servings) || 4,
+        servings: parseInt(servings) || 1,
         source: source.trim() || null,
         source_url: sourceUrl.trim() || null,
         category_id: categoryId,
@@ -216,8 +213,29 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
     })
   }
 
+  const handleImport = (data: ImportedRecipe) => {
+    setTitle(data.title)
+    setPrepTime(data.prepTime)
+    setServings(data.servings)
+    setSource(data.source)
+    setSourceUrl(data.sourceUrl)
+    if (data.ingredients.length > 0) {
+      setIngredients(data.ingredients.map(i => ({
+        amount: i.amount,
+        unit: i.unit,
+        name: i.name,
+      })))
+    }
+    if (data.steps.length > 0) {
+      setSteps(data.steps.map(s => ({ description: s })))
+    }
+  }
+
   return (
     <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-6">
+      {/* Import from URL — only show for new recipes */}
+      {!recipe && <RecipeImport onImport={handleImport} />}
+
       {error && (
         <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600">
           {error}
@@ -233,29 +251,14 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
             onChange={e => setTitle(e.target.value)}
             placeholder="bijv. Pasta Carbonara"
           />
-          <Textarea
-            label="Beschrijving"
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            placeholder="Korte beschrijving van het gerecht..."
-            rows={2}
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Input
-              label="Voorbereidingstijd (min)"
-              type="number"
-              min="0"
-              value={prepTime}
-              onChange={e => setPrepTime(e.target.value)}
-              placeholder="15"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Bereidingstijd (min)"
               type="number"
               min="0"
-              value={cookTime}
-              onChange={e => setCookTime(e.target.value)}
-              placeholder="30"
+              value={prepTime}
+              onChange={e => setPrepTime(e.target.value)}
+              placeholder="45"
             />
             <Input
               label="Aantal personen *"
