@@ -31,6 +31,13 @@ body {
 /* Eliminate touch delay and speed up transitions on interactive elements */
 a, button, [role="button"], input, select, textarea {
   touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+
+button, a, [role="button"] {
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 
