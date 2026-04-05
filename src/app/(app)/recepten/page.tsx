@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import type { Category, Recipe } from '@/lib/types'
 
 interface PageProps {
-  searchParams: Promise<{ q?: string; categorie?: string }>
+  searchParams: Promise<{ q?: string; categorieen?: string }>
 }
 
 export default async function RecipesPage({ searchParams }: PageProps) {
@@ -31,18 +31,21 @@ export default async function RecipesPage({ searchParams }: PageProps) {
     query = query.ilike('title', `%${params.q}%`)
   }
 
-  // Filter by category
-  if (params.categorie && categories) {
-    const cat = categories.find((c: Category) => c.slug === params.categorie)
-    if (cat) {
-      query = query.eq('category_id', cat.id)
+  // Filter by categories (multi-select)
+  if (params.categorieen && categories) {
+    const slugs = params.categorieen.split(',')
+    const catIds = categories
+      .filter((c: Category) => slugs.includes(c.slug))
+      .map((c: Category) => c.id)
+    if (catIds.length > 0) {
+      query = query.in('category_id', catIds)
     }
   }
 
   const { data: recipes } = await query
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto overflow-x-hidden">
       <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 bg-honey-50/80 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-6">
           <h1 className="page-title">Recepten</h1>
@@ -102,11 +105,11 @@ export default async function RecipesPage({ searchParams }: PageProps) {
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-1">Geen recepten gevonden</h3>
           <p className="text-gray-500 mb-4">
-            {params.q || params.categorie
+            {params.q || params.categorieen
               ? 'Probeer een andere zoekopdracht of filter.'
               : 'Voeg je eerste recept toe om te beginnen!'}
           </p>
-          {!params.q && !params.categorie && (
+          {!params.q && !params.categorieen && (
             <Link
               href="/recepten/nieuw"
               className="inline-flex items-center px-4 py-2 rounded-lg bg-honey-500 text-honey-950 font-medium hover:bg-honey-600 transition-colors"

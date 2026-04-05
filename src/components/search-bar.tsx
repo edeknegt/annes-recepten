@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Search, X } from 'lucide-react'
+import { Search, X, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Category } from '@/lib/types'
 
@@ -14,28 +14,44 @@ export function SearchBar({ categories }: SearchBarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [query, setQuery] = useState(searchParams.get('q') || '')
-  const activeCategory = searchParams.get('categorie') || ''
+  const [activeCategories, setActiveCategories] = useState<Set<string>>(() => {
+    const param = searchParams.get('categorieen')
+    if (param) return new Set(param.split(','))
+    // Default: all selected
+    return new Set(categories.map(c => c.slug))
+  })
 
   const updateParams = useCallback(
-    (q: string, cat: string) => {
+    (q: string, cats: Set<string>) => {
       const params = new URLSearchParams()
       if (q) params.set('q', q)
-      if (cat) params.set('categorie', cat)
+      // Only set param if not all are selected (= filtering)
+      if (cats.size > 0 && cats.size < categories.length) {
+        params.set('categorieen', Array.from(cats).join(','))
+      }
       router.push(`/recepten${params.toString() ? `?${params.toString()}` : ''}`)
     },
-    [router]
+    [router, categories.length]
   )
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      updateParams(query, activeCategory)
+      updateParams(query, activeCategories)
     }, 300)
     return () => clearTimeout(timer)
-  }, [query, activeCategory, updateParams])
+  }, [query, activeCategories, updateParams])
 
-  const setCategory = (slug: string) => {
-    const newCat = slug === activeCategory ? '' : slug
-    updateParams(query, newCat)
+  const toggleCategory = (slug: string) => {
+    setActiveCategories(prev => {
+      const next = new Set(prev)
+      if (next.has(slug)) {
+        // Don't allow deselecting all
+        if (next.size > 1) next.delete(slug)
+      } else {
+        next.add(slug)
+      }
+      return next
+    })
   }
 
   return (
@@ -62,30 +78,20 @@ export function SearchBar({ categories }: SearchBarProps) {
         )}
       </div>
 
-      {/* Category filter */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setCategory('')}
-          className={cn(
-            'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
-            !activeCategory
-              ? 'bg-honey-500 text-honey-950'
-              : 'bg-white border border-gray-200 text-gray-600 hover:bg-honey-50'
-          )}
-        >
-          Alles
-        </button>
+      {/* Category filter — multi-select */}
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none" style={{ WebkitOverflowScrolling: 'touch' }}>
         {categories.map((cat) => (
           <button
             key={cat.id}
-            onClick={() => setCategory(cat.slug)}
+            onClick={() => toggleCategory(cat.slug)}
             className={cn(
-              'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
-              activeCategory === cat.slug
+              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap shrink-0',
+              activeCategories.has(cat.slug)
                 ? 'bg-honey-500 text-honey-950'
                 : 'bg-white border border-gray-200 text-gray-600 hover:bg-honey-50'
             )}
           >
+            {activeCategories.has(cat.slug) && <Check className="h-3.5 w-3.5" />}
             {cat.name}
           </button>
         ))}

@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Raleway } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const raleway = Raleway({
   subsets: ["latin"],
   variable: "--font-sans",
 });
@@ -32,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="nl" className={`${inter.variable} h-full antialiased`}>
+    <html lang="nl" className={`${raleway.variable} h-full antialiased`}>
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>

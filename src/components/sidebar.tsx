@@ -24,8 +24,8 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile bottom navigation bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 safe-area-bottom">
-        <div className="flex items-stretch justify-around">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 safe-area-bottom">
+        <div className="flex items-center justify-around h-14">
           {navItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.href)
@@ -34,33 +34,23 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex flex-1 flex-col items-center gap-1 py-2 pt-3 text-xs font-medium transition-colors',
-                  active
-                    ? 'text-honey-700'
-                    : 'text-gray-400'
+                  'flex flex-col items-center justify-center gap-0.5 min-w-[4rem]',
+                  active ? 'text-honey-700' : 'text-gray-400'
                 )}
               >
-                <div className={cn(
-                  'flex items-center justify-center w-10 h-10 rounded-xl transition-colors',
-                  active ? 'bg-honey-100' : ''
-                )}>
-                  <Icon className={cn('h-5 w-5', active ? 'text-honey-700' : 'text-gray-400')} />
-                </div>
-                {item.label}
+                <Icon className="h-5 w-5" />
+                <span className="text-[10px] leading-tight font-medium">{item.label}</span>
               </Link>
             )
           })}
 
-          {/* Uitloggen */}
-          <form action={logout} className="flex flex-1">
+          <form action={logout}>
             <button
               type="submit"
-              className="flex flex-1 flex-col items-center gap-1 py-2 pt-3 text-xs font-medium text-gray-400 transition-colors"
+              className="flex flex-col items-center justify-center gap-0.5 min-w-[4rem] text-gray-400"
             >
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl">
-                <LogOut className="h-5 w-5 text-gray-400" />
-              </div>
-              Uitloggen
+              <LogOut className="h-5 w-5" />
+              <span className="text-[10px] leading-tight font-medium">Uitloggen</span>
             </button>
           </form>
         </div>

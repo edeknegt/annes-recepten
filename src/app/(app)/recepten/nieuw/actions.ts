@@ -186,7 +186,13 @@ export async function importRecipe(url: string): Promise<{ data?: ImportedRecipe
     })
 
     if (!response.ok) {
-      return { error: `Kon de pagina niet ophalen (${response.status})` }
+      if (response.status === 403 || response.status === 401) {
+        return { error: 'Deze website blokkeert het ophalen van recepten. Probeer het recept handmatig in te voeren.' }
+      }
+      if (response.status === 404) {
+        return { error: 'Pagina niet gevonden. Controleer of de link klopt.' }
+      }
+      return { error: `Kon de pagina niet bereiken. Controleer de link en probeer het opnieuw.` }
     }
 
     const html = await response.text()
@@ -204,7 +210,7 @@ export async function importRecipe(url: string): Promise<{ data?: ImportedRecipe
     }
 
     if (!recipe || !recipe.title) {
-      return { error: 'Kon geen recept vinden op deze pagina. Probeer een andere link.' }
+      return { error: `Kon geen recept herkennen op ${domain || 'deze pagina'}. Controleer of de link naar een specifiek recept verwijst.` }
     }
 
     return {
@@ -220,8 +226,11 @@ export async function importRecipe(url: string): Promise<{ data?: ImportedRecipe
     }
   } catch (error) {
     if (error instanceof Error && error.name === 'TimeoutError') {
-      return { error: 'De pagina reageerde niet snel genoeg. Probeer het opnieuw.' }
+      return { error: 'De website reageert te langzaam. Probeer het later opnieuw of voer het recept handmatig in.' }
     }
-    return { error: 'Er ging iets mis bij het ophalen van het recept.' }
+    if (error instanceof TypeError) {
+      return { error: 'Ongeldige link. Controleer of de URL begint met https://' }
+    }
+    return { error: 'Er ging iets mis. Probeer het opnieuw of voer het recept handmatig in.' }
   }
 }

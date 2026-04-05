@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, AlertCircle, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -236,12 +236,6 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
       {/* Import from URL — only show for new recipes */}
       {!recipe && <RecipeImport onImport={handleImport} />}
 
-      {error && (
-        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600">
-          {error}
-        </div>
-      )}
-
       {/* Basic info */}
       <Card>
         <CardContent className="py-5 space-y-4">
@@ -400,10 +394,19 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
                 <div className="flex-1">
                   <textarea
                     value={step.description}
-                    onChange={e => updateStep(index, e.target.value)}
+                    onChange={e => {
+                      if (e.target.value.length <= 600) updateStep(index, e.target.value)
+                      e.target.style.height = 'auto'
+                      e.target.style.height = e.target.scrollHeight + 'px'
+                    }}
+                    onFocus={e => {
+                      e.target.style.height = 'auto'
+                      e.target.style.height = e.target.scrollHeight + 'px'
+                    }}
+                    maxLength={600}
                     placeholder="Beschrijf deze stap..."
                     rows={2}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-honey-500 resize-none"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-honey-500 resize-none overflow-hidden"
                   />
                 </div>
                 <button
@@ -441,6 +444,19 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
           {recipe ? 'Opslaan' : 'Recept toevoegen'}
         </Button>
       </div>
+
+      {/* Error toast — fixed at bottom */}
+      {error && (
+        <div className="fixed bottom-20 lg:bottom-6 left-4 right-4 lg:left-auto lg:right-6 lg:max-w-sm z-50 animate-slide-up">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-600 text-white shadow-lg">
+            <AlertCircle className="h-5 w-5 shrink-0" />
+            <span className="text-sm font-medium flex-1">{error}</span>
+            <button onClick={() => setError(null)} className="p-0.5 rounded-full hover:bg-red-500 transition-colors">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </form>
   )
 }
