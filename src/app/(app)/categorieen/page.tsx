@@ -265,7 +265,7 @@ export default function CategoriesPage() {
                     <span className="text-base font-semibold text-gray-900 truncate">
                       {cat.name}
                       <span className="ml-1.5 text-sm font-normal text-gray-400">
-                        ({count})
+                        ({count} {count === 1 ? 'recept' : 'recepten'})
                       </span>
                     </span>
                   </button>
