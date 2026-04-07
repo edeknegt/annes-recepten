@@ -63,7 +63,7 @@ export default function PinPage() {
   }, [handleDigit, handleBackspace])
 
   return (
-    <div className="min-h-dvh flex items-center justify-center bg-honey-100 p-4">
+    <div className="fixed inset-0 flex items-center justify-center bg-honey-100 p-4">
       {/* Card */}
       <div className="w-full max-w-xs bg-white rounded-3xl shadow-lg border border-honey-200 py-10 px-6 flex flex-col items-center">
         {/* Logo */}
