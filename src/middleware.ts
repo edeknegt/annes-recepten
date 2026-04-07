@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
+const SESSION_MAX_AGE = 60 * 15 // 15 minuten
+
 export function middleware(request: NextRequest) {
   const pinCookie = request.cookies.get('annes-recepten-auth')
   const isOnPinPage = request.nextUrl.pathname === '/pin'
@@ -14,6 +16,19 @@ export function middleware(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
+  }
+
+  // Ververs de cookie bij elke request (rolling session)
+  if (pinCookie && !isOnPinPage) {
+    const response = NextResponse.next()
+    response.cookies.set('annes-recepten-auth', 'authenticated', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE,
+      path: '/',
+    })
+    return response
   }
 
   return NextResponse.next()

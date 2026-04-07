@@ -20,7 +20,7 @@ export async function verifyPin(formData: FormData) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 365, // 1 year
+    maxAge: 60 * 15, // 15 minuten (wordt verlengd bij elke paginalading)
     path: '/',
   })
 

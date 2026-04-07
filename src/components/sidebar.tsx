@@ -61,7 +61,7 @@ export function Sidebar() {
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
           <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-honey-300 shrink-0">
-            <Image src="/erik-anne-eten.jpg" alt="Erik en Anne" width={40} height={40} className="w-full h-full object-cover" />
+            <Image src="/erik-anne-drinks.png" alt="Erik en Anne" width={40} height={40} className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="text-lg font-bold text-gray-900">Recepten</h1>

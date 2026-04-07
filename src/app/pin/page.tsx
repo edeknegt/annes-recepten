@@ -63,153 +63,77 @@ export default function PinPage() {
   }, [handleDigit, handleBackspace])
 
   return (
-    <div style={{ height: '100dvh', overflow: 'hidden', backgroundColor: '#FFFBE6' }}>
-      {/* Mobile: foto achtergrond */}
-      <div
-        className="md:hidden"
-        style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundImage: 'url(/erik-anne-eten.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          opacity: 0.45,
-        }}
-      />
-      <div
-        className="md:hidden"
-        style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'linear-gradient(to bottom, rgba(255,251,230,0.15) 0%, rgba(255,251,230,0.5) 50%, rgba(255,251,230,0.92) 100%)',
-        }}
-      />
-
-      {/* Desktop: foto links */}
-      <div
-        className="hidden md:block"
-        style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: '55%' }}
-      >
-        <div
-          style={{
-            position: 'absolute', inset: 0,
-            backgroundImage: 'url(/erik-anne-eten.jpg)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-          }}
+    <div className="min-h-dvh flex items-center justify-center bg-honey-100 p-4">
+      {/* Card */}
+      <div className="w-full max-w-xs bg-white rounded-3xl shadow-lg border border-honey-200 py-10 px-6 flex flex-col items-center">
+        {/* Logo */}
+        <img
+          src="/erik-anne-drinks.png"
+          alt="Recepten van Anne"
+          className="w-24 h-24 rounded-2xl shadow-sm border-2 border-honey-200 mb-5"
         />
-        <div
-          style={{
-            position: 'absolute', top: 0, bottom: 0, right: '6px', width: '60px',
-            background: 'linear-gradient(to right, transparent, #FFFBE6)',
-            zIndex: 2,
-          }}
-        />
-        <div
-          style={{
-            position: 'absolute', top: 0, bottom: 0, right: 0, width: '6px',
-            backgroundColor: '#FFD633', zIndex: 3,
-          }}
-        />
-      </div>
 
-      {/* Numpad — ONE instance, positioned via CSS */}
-      <div
-        className="md:ml-[55%]"
-        style={{
-          position: 'relative', zIndex: 10,
-          height: '100%',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        {/* Desktop: white card wrapper */}
-        <div className="md:bg-white md:rounded-3xl md:shadow-[0_4px_24px_rgba(0,0,0,0.06)] md:p-10 md:pb-9 md:max-w-[360px] flex flex-col items-center">
-          {/* Desktop only: icon */}
-          <img
-            src="/icon.svg"
-            alt="Recepten van Anne"
-            className="hidden md:block"
-            style={{ width: '56px', height: '56px', marginBottom: '16px' }}
-          />
+        {/* Title */}
+        <h1 className="text-xl font-bold text-gray-900">Recepten van Anne</h1>
+        <p className="text-sm text-gray-500 mt-1 mb-8">Voer je pincode in</p>
 
-          <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#111' }}>Recepten van Anne</h1>
-          <p style={{ fontSize: '14px', color: '#666', marginTop: '4px', marginBottom: '32px' }}>Voer je pincode in</p>
-
-          {/* PIN dots */}
-          <div style={{ display: 'flex', gap: '20px', marginBottom: '12px' }}>
-            {Array.from({ length: PIN_LENGTH }).map((_, i) => (
-              <div
-                key={i}
-                style={{
-                  width: '14px', height: '14px', borderRadius: '50%',
-                  transition: 'all 0.15s',
-                  ...(i < pin.length
-                    ? { backgroundColor: '#BF9A14' }
-                    : { border: '2px solid #ccc', backgroundColor: 'transparent' }
-                  ),
-                }}
-              />
-            ))}
-          </div>
-
-          {/* Error */}
-          <div style={{ height: '28px', display: 'flex', alignItems: 'center' }}>
-            {error && <p style={{ fontSize: '14px', color: '#ef4444', fontWeight: 500 }}>{error}</p>}
-          </div>
-
-          {/* Number pad */}
-          <table style={{ borderSpacing: '12px', borderCollapse: 'separate', marginTop: '8px' }}>
-            <tbody>
-              {rows.map((row, ri) => (
-                <tr key={ri}>
-                  {row.map((key, ci) => (
-                    <td key={ci} style={{ padding: 0 }}>
-                      {key === null ? (
-                        <div style={{ width: '72px', height: '52px' }} />
-                      ) : key === 'back' ? (
-                        <button
-                          type="button"
-                          onClick={handleBackspace}
-                          disabled={isPending || pin.length === 0}
-                          style={{
-                            width: '72px', height: '52px', borderRadius: '12px',
-                            border: 'none', background: 'transparent',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer',
-                            opacity: pin.length === 0 ? 0.3 : 1,
-                            WebkitTapHighlightColor: 'transparent',
-                          }}
-                        >
-                          <Delete style={{ width: '20px', height: '20px', color: '#999' }} />
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleDigit(key)}
-                          disabled={isPending}
-                          style={{
-                            width: '72px', height: '52px', borderRadius: '12px',
-                            border: '1px solid rgba(0,0,0,0.06)',
-                            background: pressedKey === key ? '#FFD633' : 'rgba(255,255,255,0.85)',
-                            boxShadow: pressedKey === key ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
-                            fontSize: '22px', fontWeight: 600,
-                            color: pressedKey === key ? '#4D3C08' : '#333',
-                            cursor: 'pointer',
-                            WebkitTapHighlightColor: 'transparent',
-                          }}
-                        >
-                          {key}
-                        </button>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* PIN dots */}
+        <div className="flex gap-5 mb-3">
+          {Array.from({ length: PIN_LENGTH }).map((_, i) => (
+            <div
+              key={i}
+              className={`w-3.5 h-3.5 rounded-full transition-all duration-150 ${
+                i < pin.length
+                  ? 'bg-honey-700 scale-110'
+                  : 'border-2 border-gray-300'
+              }`}
+            />
+          ))}
         </div>
+
+        {/* Error */}
+        <div className="h-7 flex items-center">
+          {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
+        </div>
+
+        {/* Number pad */}
+        <table style={{ borderSpacing: '10px 8px', borderCollapse: 'separate', marginTop: '4px' }}>
+          <tbody>
+            {rows.map((row, ri) => (
+              <tr key={ri}>
+                {row.map((key, ci) => (
+                  <td key={ci} style={{ padding: 0 }}>
+                    {key === null ? (
+                      <div className="w-[72px] h-[50px]" />
+                    ) : key === 'back' ? (
+                      <button
+                        type="button"
+                        onClick={handleBackspace}
+                        disabled={isPending || pin.length === 0}
+                        className="w-[72px] h-[50px] rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-30 transition-colors"
+                      >
+                        <Delete className="w-5 h-5" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleDigit(key)}
+                        disabled={isPending}
+                        className={`w-[72px] h-[50px] rounded-xl text-xl font-semibold transition-colors ${
+                          pressedKey === key
+                            ? 'bg-honey-500 text-honey-950'
+                            : 'bg-honey-50 text-gray-800 hover:bg-honey-100 active:bg-honey-200'
+                        }`}
+                      >
+                        {key}
+                      </button>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )
