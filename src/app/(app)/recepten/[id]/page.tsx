@@ -46,7 +46,7 @@ export default async function RecipeDetailPage({ params }: PageProps) {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 bg-honey-50/80 backdrop-blur-sm">
+      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 bg-honey-50/95">
         {/* Back link */}
         <Link
           href="/recepten"
@@ -87,53 +87,63 @@ export default async function RecipeDetailPage({ params }: PageProps) {
         {/* Left column: bereidingstijd + ingrediënten */}
         <div className="lg:col-span-2 space-y-6">
           {recipe.prep_time && (() => {
-            const fraction = Math.min(recipe.prep_time / 60, 1)
-            const angle = fraction * 360
             const rad = (a: number) => ((a - 90) * Math.PI) / 180
-            const x = 50 + 40 * Math.cos(rad(angle))
-            const y = 50 + 40 * Math.sin(rad(angle))
-            const largeArc = angle > 180 ? 1 : 0
-            const piePath = angle >= 360
-              ? 'M50,50 m0,-40 a40,40 0 1,1 0,80 a40,40 0 1,1 0,-80 Z'
-              : `M50,50 L50,10 A40,40 0 ${largeArc},1 ${x},${y} Z`
+
+            const makeClock = (minutes: number) => {
+              const fraction = Math.min(minutes / 60, 1)
+              const angle = fraction * 360
+              const r = 40
+              const x = 50 + r * Math.cos(rad(angle))
+              const y = 50 + r * Math.sin(rad(angle))
+              const piePath = angle >= 360
+                ? `M50,50 m0,-${r} a${r},${r} 0 1,1 0,${r * 2} a${r},${r} 0 1,1 0,-${r * 2} Z`
+                : `M50,50 L50,${50 - r} A${r},${r} 0 ${angle > 180 ? 1 : 0},1 ${x},${y} Z`
+
+              return (
+                <svg viewBox="0 0 100 100" className="w-full h-full">
+                  <circle cx="50" cy="50" r="46" fill="white" stroke="#E5E7EB" strokeWidth="2" />
+                  <path d={piePath} fill="#FFD633" opacity="0.6" />
+                  {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => (
+                    <line
+                      key={deg}
+                      x1={50 + 38 * Math.cos(rad(deg))}
+                      y1={50 + 38 * Math.sin(rad(deg))}
+                      x2={50 + 43 * Math.cos(rad(deg))}
+                      y2={50 + 43 * Math.sin(rad(deg))}
+                      stroke="#9CA3AF"
+                      strokeWidth={deg % 90 === 0 ? 2.5 : 1.5}
+                      strokeLinecap="round"
+                    />
+                  ))}
+                  <line
+                    x1="50" y1="50"
+                    x2={50 + 34 * Math.cos(rad(angle))}
+                    y2={50 + 34 * Math.sin(rad(angle))}
+                    stroke="#4D3C08"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  />
+                  <circle cx="50" cy="50" r="3" fill="#4D3C08" />
+                  <circle cx="50" cy="50" r="46" fill="none" stroke="#BF9A14" strokeWidth="2.5" />
+                </svg>
+              )
+            }
+
+            const overHour = recipe.prep_time > 60
 
             return (
               <Card>
                 <CardContent className="py-5 flex items-center gap-4 px-5">
-                  {/* Clock face */}
-                  <div className="relative w-20 h-20 shrink-0">
-                    <svg viewBox="0 0 100 100" className="w-full h-full">
-                      {/* Clock background */}
-                      <circle cx="50" cy="50" r="46" fill="white" stroke="#E5E7EB" strokeWidth="2" />
-                      {/* Filled pie slice */}
-                      <path d={piePath} fill="#FFD633" opacity="0.6" />
-                      {/* Hour ticks */}
-                      {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => (
-                        <line
-                          key={deg}
-                          x1={50 + 38 * Math.cos(rad(deg))}
-                          y1={50 + 38 * Math.sin(rad(deg))}
-                          x2={50 + 43 * Math.cos(rad(deg))}
-                          y2={50 + 43 * Math.sin(rad(deg))}
-                          stroke="#9CA3AF"
-                          strokeWidth={deg % 90 === 0 ? 2.5 : 1.5}
-                          strokeLinecap="round"
-                        />
-                      ))}
-                      {/* Clock hand */}
-                      <line
-                        x1="50" y1="50"
-                        x2={50 + 34 * Math.cos(rad(angle))}
-                        y2={50 + 34 * Math.sin(rad(angle))}
-                        stroke="#4D3C08"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                      />
-                      {/* Center dot */}
-                      <circle cx="50" cy="50" r="3" fill="#4D3C08" />
-                      {/* Outer ring */}
-                      <circle cx="50" cy="50" r="46" fill="none" stroke="#BF9A14" strokeWidth="2.5" />
-                    </svg>
+                  {/* Clock(s) */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="w-16 h-16">
+                      {makeClock(overHour ? 60 : recipe.prep_time)}
+                    </div>
+                    {overHour && (
+                      <div className="w-16 h-16">
+                        {makeClock(recipe.prep_time - 60)}
+                      </div>
+                    )}
                   </div>
 
                   {/* Text */}
