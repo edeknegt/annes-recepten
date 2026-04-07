@@ -45,7 +45,7 @@ export default async function RecipesPage({ searchParams }: PageProps) {
   const { data: recipes } = await query
 
   return (
-    <div className="max-w-5xl mx-auto overflow-x-hidden">
+    <div className="max-w-5xl mx-auto">
       <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 bg-honey-50/95">
         <div className="flex items-center justify-between mb-6">
           <h1 className="page-title">Recepten</h1>
