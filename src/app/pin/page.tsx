@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect, useCallback, useRef } from 'react'
+import { useState, useTransition, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { Delete } from 'lucide-react'
 import { verifyPin } from './actions'
 
@@ -62,12 +62,45 @@ export default function PinPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleDigit, handleBackspace])
 
+  const logoRef = useRef<HTMLImageElement>(null)
+
+  useLayoutEffect(() => {
+    const splash = document.getElementById('splash')
+    const splashLogo = document.getElementById('splash-logo')
+    const splashText = document.getElementById('splash-text')
+    const target = logoRef.current
+
+    if (!splash || !splashLogo || !target) return
+
+    // Get target position
+    const targetRect = target.getBoundingClientRect()
+
+    // Hide the "Laden..." text
+    if (splashText) splashText.style.opacity = '0'
+
+    // Animate splash logo to target position
+    splashLogo.style.width = `${targetRect.width}px`
+    splashLogo.style.height = `${targetRect.height}px`
+    splashLogo.style.position = 'fixed'
+    splashLogo.style.left = `${targetRect.left}px`
+    splashLogo.style.top = `${targetRect.top}px`
+    splashLogo.style.transform = 'none'
+
+    // Fade out splash background
+    splash.style.transition = 'background-color 0.5s ease'
+    splash.style.backgroundColor = 'transparent'
+
+    // Remove splash after animation
+    setTimeout(() => splash.remove(), 500)
+  }, [])
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-honey-100 p-4">
       {/* Card */}
       <div className="w-full max-w-xs bg-white rounded-3xl shadow-lg border border-honey-200 py-10 px-6 flex flex-col items-center">
         {/* Logo */}
         <img
+          ref={logoRef}
           src="/erik-anne-drinks.png"
           alt="Recepten van Anne"
           className="w-24 h-24 rounded-2xl shadow-sm border-2 border-honey-200 mb-5"
