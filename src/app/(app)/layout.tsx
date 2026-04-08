@@ -1,5 +1,4 @@
 import { Sidebar } from '@/components/sidebar'
-import { SplashRemover } from '@/components/splash-remover'
 
 export default function AppLayout({
   children,
@@ -8,7 +7,6 @@ export default function AppLayout({
 }) {
   return (
     <div className="min-h-screen bg-honey-100">
-      <SplashRemover />
       <Sidebar />
       <main className="lg:ml-64 pb-24 lg:pb-0">
         <div className="px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
