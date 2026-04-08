@@ -41,7 +41,16 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
 
   // Form state
   const [title, setTitle] = useState(recipe?.title || '')
-  const [prepTime, setPrepTime] = useState(recipe?.prep_time?.toString() || '')
+  const [prepHours, setPrepHours] = useState(() => {
+    if (!recipe?.prep_time) return ''
+    const h = Math.floor(recipe.prep_time / 60)
+    return h > 0 ? h.toString() : ''
+  })
+  const [prepMinutes, setPrepMinutes] = useState(() => {
+    if (!recipe?.prep_time) return ''
+    const m = recipe.prep_time % 60
+    return m > 0 ? m.toString() : ''
+  })
   const [servings, setServings] = useState(recipe?.servings?.toString() || '')
   const [source, setSource] = useState(recipe?.source || '')
   const [sourceUrl, setSourceUrl] = useState(recipe?.source_url || '')
@@ -122,6 +131,10 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
       setError('Kies een categorie')
       return
     }
+    if (!prepHours && !prepMinutes) {
+      setError('Vul een bereidingstijd in')
+      return
+    }
 
     const validIngredients = ingredients.filter(i => i.name.trim())
     const validSteps = steps.filter(s => s.description.trim())
@@ -140,7 +153,7 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
 
       const recipeData = {
         title: title.trim(),
-        prep_time: prepTime ? parseInt(prepTime) : null,
+        prep_time: (prepHours || prepMinutes) ? (parseInt(prepHours || '0') * 60) + parseInt(prepMinutes || '0') : null,
         servings: parseInt(servings) || 1,
         source: source.trim() || null,
         source_url: sourceUrl.trim() || null,
@@ -215,7 +228,13 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
 
   const handleImport = (data: ImportedRecipe) => {
     setTitle(data.title)
-    setPrepTime(data.prepTime)
+    if (data.prepTime) {
+      const totalMin = parseInt(data.prepTime)
+      const h = Math.floor(totalMin / 60)
+      const m = totalMin % 60
+      setPrepHours(h > 0 ? h.toString() : '')
+      setPrepMinutes(m > 0 ? m.toString() : '')
+    }
     setServings(data.servings)
     setSource(data.source)
     setSourceUrl(data.sourceUrl)
@@ -288,20 +307,48 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
             placeholder="bijv. Pasta Carbonara"
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Bereidingstijd (min)"
-              type="number"
-              min="0"
-              value={prepTime}
-              onChange={e => setPrepTime(e.target.value)}
-              placeholder="45"
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Bereidingstijd *</label>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={prepHours}
+                    maxLength={2}
+                    onChange={e => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                      setPrepHours(v)
+                    }}
+                    placeholder="0"
+                    className="w-16 rounded-lg border border-gray-300 px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-honey-500 focus:border-honey-500"
+                  />
+                  <span className="text-sm text-gray-500">uur</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={prepMinutes}
+                    maxLength={2}
+                    onChange={e => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                      setPrepMinutes(v)
+                    }}
+                    placeholder="0"
+                    className="w-16 rounded-lg border border-gray-300 px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-honey-500 focus:border-honey-500"
+                  />
+                  <span className="text-sm text-gray-500">min</span>
+                </div>
+              </div>
+            </div>
             <Input
               label="Aantal personen *"
               type="number"
               min="1"
+              maxLength={2}
               value={servings}
-              onChange={e => setServings(e.target.value)}
+              onChange={e => setServings(e.target.value.slice(0, 2))}
               placeholder="4"
             />
           </div>
@@ -330,7 +377,7 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
           <div className="space-y-3">
             {ingredients.map((ing, index) => (
               <div key={index} className="flex items-start gap-2">
-                <div className="w-20 shrink-0">
+                <div className="w-[4.5rem] shrink-0">
                   <input
                     type="number"
                     step="any"
@@ -341,7 +388,7 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
                     className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-honey-500"
                   />
                 </div>
-                <div className="w-20 shrink-0">
+                <div className="w-[4.5rem] shrink-0">
                   <input
                     type="text"
                     value={ing.unit}
@@ -362,7 +409,7 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
                 <button
                   type="button"
                   onClick={() => removeIngredient(index)}
-                  className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                  className="w-8 shrink-0 p-2 text-gray-400 hover:text-red-500 transition-colors"
                   disabled={ingredients.length === 1}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -387,7 +434,7 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Bereiding</h2>
           <div className="space-y-3">
             {steps.map((step, index) => (
-              <div key={index} className="flex items-start gap-3">
+              <div key={index} className="flex items-start gap-2">
                 <span className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-honey-100 text-honey-800 text-sm font-semibold mt-1">
                   {index + 1}
                 </span>
@@ -412,7 +459,7 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
                 <button
                   type="button"
                   onClick={() => removeStep(index)}
-                  className="p-2 text-gray-400 hover:text-red-500 transition-colors mt-1"
+                  className="w-8 shrink-0 p-2 text-gray-400 hover:text-red-500 transition-colors mt-1"
                   disabled={steps.length === 1}
                 >
                   <Trash2 className="h-4 w-4" />

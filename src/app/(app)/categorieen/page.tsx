@@ -218,7 +218,7 @@ export default function CategoriesPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 bg-honey-50/95">
+      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 bg-honey-100">
         <h1 className="page-title">Categorie&euml;n</h1>
       </div>
 

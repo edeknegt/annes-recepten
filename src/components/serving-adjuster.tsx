@@ -9,38 +9,64 @@ interface ServingAdjusterProps {
   ingredients: Ingredient[]
 }
 
-function formatAmount(amount: number | null, ratio: number): string {
+const fractions = [
+  { value: 0,    str: '' },
+  { value: 1/4,  str: '\u00BC' },  // ¼
+  { value: 1/3,  str: '\u2153' },  // ⅓
+  { value: 1/2,  str: '\u00BD' },  // ½
+  { value: 2/3,  str: '\u2154' },  // ⅔
+  { value: 3/4,  str: '\u00BE' },  // ¾
+  { value: 1,    str: '' },
+]
+
+function toFraction(n: number): string {
+  if (n === 0) return '0'
+
+  const whole = Math.floor(n)
+  const frac = n - whole
+
+  // Find closest fraction
+  let best = fractions[0]
+  let bestDist = Math.abs(frac - best.value)
+  for (const f of fractions) {
+    const dist = Math.abs(frac - f.value)
+    if (dist < bestDist) {
+      best = f
+      bestDist = dist
+    }
+  }
+
+  const roundedWhole = best.value >= 1 ? whole + 1 : whole
+
+  if (best.str) return roundedWhole ? `${roundedWhole}${best.str}` : best.str
+  return (roundedWhole || 1).toString()
+}
+
+function roundAmount(value: number): number {
+  if (value < 10) return value // geen afronding, breuken
+  if (value < 50) return Math.round(value)
+  if (value < 150) return Math.round(value / 5) * 5
+  if (value < 500) return Math.round(value / 10) * 10
+  if (value < 1500) return Math.round(value / 50) * 50
+  return Math.round(value / 100) * 100
+}
+
+function formatAmount(amount: number | null, ratio: number, isOriginal: boolean): string {
   if (amount === null) return ''
+  if (isOriginal) {
+    return toFraction(amount)
+  }
   const adjusted = amount * ratio
-
-  // Handle common fractions
-  if (adjusted === 0) return '0'
-  if (adjusted === 0.25) return '\u00BC'
-  if (adjusted === 0.5) return '\u00BD'
-  if (adjusted === 0.75) return '\u00BE'
-  if (adjusted === 0.33 || adjusted === 1/3) return '\u2153'
-  if (adjusted === 0.67 || adjusted === 2/3) return '\u2154'
-
-  const whole = Math.floor(adjusted)
-  const frac = adjusted - whole
-
-  if (frac < 0.05) return whole.toString()
-  if (frac > 0.95) return (whole + 1).toString()
-
-  // Check common fractions for the remainder
-  if (Math.abs(frac - 0.25) < 0.05) return whole ? `${whole}\u00BC` : '\u00BC'
-  if (Math.abs(frac - 0.33) < 0.05) return whole ? `${whole}\u2153` : '\u2153'
-  if (Math.abs(frac - 0.5) < 0.05) return whole ? `${whole}\u00BD` : '\u00BD'
-  if (Math.abs(frac - 0.67) < 0.05) return whole ? `${whole}\u2154` : '\u2154'
-  if (Math.abs(frac - 0.75) < 0.05) return whole ? `${whole}\u00BE` : '\u00BE'
-
-  // Fall back to 1 decimal
-  return adjusted % 1 === 0 ? adjusted.toString() : adjusted.toFixed(1)
+  if (adjusted < 10) {
+    return toFraction(adjusted)
+  }
+  return roundAmount(adjusted).toString()
 }
 
 export function ServingAdjuster({ originalServings, ingredients }: ServingAdjusterProps) {
   const [servings, setServings] = useState(originalServings)
   const ratio = servings / originalServings
+  const isOriginal = servings === originalServings
 
   return (
     <div>
@@ -65,7 +91,7 @@ export function ServingAdjuster({ originalServings, ingredients }: ServingAdjust
             <Plus className="h-4 w-4" />
           </button>
         </div>
-        {servings !== originalServings && (
+        {!isOriginal && (
           <button
             onClick={() => setServings(originalServings)}
             className="text-xs text-honey-700 hover:text-honey-800 underline"
@@ -80,7 +106,7 @@ export function ServingAdjuster({ originalServings, ingredients }: ServingAdjust
         {ingredients.map((ing) => (
           <li key={ing.id} className="flex items-baseline gap-2 text-gray-700">
             <span className="font-medium text-gray-900 min-w-[3rem] text-right">
-              {formatAmount(ing.amount, ratio)}
+              {formatAmount(ing.amount, ratio, isOriginal)}
             </span>
             <span className="text-gray-500">{ing.unit}</span>
             <span>{ing.name}</span>
