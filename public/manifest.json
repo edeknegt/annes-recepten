@@ -4,8 +4,8 @@
   "description": "Anne's persoonlijke receptenverzameling",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FFFBE6",
-  "theme_color": "#FFFBE6",
+  "background_color": "#FFFEF7",
+  "theme_color": "#FFD633",
   "icons": [
     {
       "src": "/icon-192.png",
