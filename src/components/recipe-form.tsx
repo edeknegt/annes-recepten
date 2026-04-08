@@ -391,6 +391,7 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
                 <div className="w-[4.5rem] shrink-0">
                   <input
                     type="text"
+                    autoCapitalize="none"
                     value={ing.unit}
                     onChange={e => updateIngredient(index, 'unit', e.target.value)}
                     placeholder="gram"
@@ -400,9 +401,10 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
                 <div className="flex-1">
                   <input
                     type="text"
+                    autoCapitalize="none"
                     value={ing.name}
                     onChange={e => updateIngredient(index, 'name', e.target.value)}
-                    placeholder="Ingrediënt..."
+                    placeholder="ingrediënt..."
                     className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-honey-500"
                   />
                 </div>
