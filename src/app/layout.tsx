@@ -23,7 +23,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#FFD633",
+  themeColor: "#FFFBE6",
 };
 
 export default function RootLayout({
@@ -32,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="nl" className={`${raleway.variable} h-full antialiased`}>
+    <html lang="nl" className={`${raleway.variable} h-full antialiased`} style={{ backgroundColor: '#FFFBE6' }}>
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
