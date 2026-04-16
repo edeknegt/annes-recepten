@@ -17,16 +17,20 @@ export default function PinPage() {
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [pin, setPin] = useState('')
+  const [showLoading, setShowLoading] = useState(false)
   const pinRef = useRef(pin)
   pinRef.current = pin
 
   const submit = useCallback((fullPin: string) => {
     setError(null)
+    // Brief delay to show filled dots, then show loading
+    setTimeout(() => setShowLoading(true), 150)
     const formData = new FormData()
     formData.set('pin', fullPin)
     startTransition(async () => {
       const result = await verifyPin(formData)
       if (result?.error) {
+        setShowLoading(false)
         setError(result.error)
         setPin('')
       }
@@ -59,7 +63,7 @@ export default function PinPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleDigit, handleBackspace])
 
-  if (isPending) {
+  if (showLoading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-honey-100 p-4">
         <div className="flex flex-col items-center">
