@@ -1,9 +1,10 @@
 'use client'
 
+import { useTransition } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
-import { BookOpen, PlusCircle, Tags, LogOut } from 'lucide-react'
+import { BookOpen, PlusCircle, Tags, LogOut, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logout } from '@/app/pin/actions'
 
@@ -15,6 +16,11 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const [loggingOut, startTransition] = useTransition()
+
+  const handleLogout = () => {
+    startTransition(() => logout())
+  }
 
   const isActive = (href: string) => {
     if (href === '/recepten') return pathname === '/recepten'
@@ -44,15 +50,14 @@ export function Sidebar() {
             )
           })}
 
-          <form action={logout}>
-            <button
-              type="submit"
-              className="flex flex-col items-center justify-center gap-0.5 min-w-[4rem] text-gray-400"
-            >
-              <LogOut className="h-5 w-5" />
-              <span className="text-[10px] leading-tight font-medium">Uitloggen</span>
-            </button>
-          </form>
+          <button
+            onPointerDown={handleLogout}
+            disabled={loggingOut}
+            className="flex flex-col items-center justify-center gap-0.5 min-w-[4rem] text-gray-400"
+          >
+            {loggingOut ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
+            <span className="text-[10px] leading-tight font-medium">Uitloggen</span>
+          </button>
         </div>
       </nav>
 
@@ -94,15 +99,14 @@ export function Sidebar() {
 
         {/* Uitloggen */}
         <div className="px-3 py-4 border-t border-gray-200">
-          <form action={logout}>
-            <button
-              type="submit"
-              className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
-            >
-              <LogOut className="h-5 w-5 text-gray-400" />
-              Uitloggen
-            </button>
-          </form>
+          <button
+            onPointerDown={handleLogout}
+            disabled={loggingOut}
+            className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+          >
+            {loggingOut ? <Loader2 className="h-5 w-5 text-gray-400 animate-spin" /> : <LogOut className="h-5 w-5 text-gray-400" />}
+            Uitloggen
+          </button>
         </div>
       </aside>
     </>
