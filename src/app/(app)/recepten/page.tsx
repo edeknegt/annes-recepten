@@ -2,23 +2,29 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import { Clock, Users, BookOpen } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { SearchBar } from '@/components/search-bar'
+import { RecipeFilters } from '@/components/recipe-filters'
 import { Badge } from '@/components/ui/badge'
 import type { Category, Recipe } from '@/lib/types'
 
 interface PageProps {
-  searchParams: Promise<{ q?: string; categorieen?: string }>
+  searchParams: Promise<{
+    q?: string
+    categorieen?: string
+    subcategorieen?: string
+    tijd?: string
+    ingredienten?: string
+  }>
 }
 
 export default async function RecipesPage({ searchParams }: PageProps) {
   const params = await searchParams
   const supabase = await createClient()
 
-  // Fetch categories for filter
-  const { data: categories } = await supabase
-    .from('categories')
-    .select('*')
-    .order('sort_order')
+  // Fetch categories and subcategories for filters
+  const [{ data: categories }, { data: subcategories }] = await Promise.all([
+    supabase.from('categories').select('*').order('sort_order'),
+    supabase.from('subcategories').select('*').order('sort_order'),
+  ])
 
   // Build recipe query
   let query = supabase
@@ -31,7 +37,7 @@ export default async function RecipesPage({ searchParams }: PageProps) {
     query = query.ilike('title', `%${params.q}%`)
   }
 
-  // Filter by categories (multi-select)
+  // Filter by categories
   if (params.categorieen && categories) {
     const slugs = params.categorieen.split(',')
     const catIds = categories
@@ -42,7 +48,55 @@ export default async function RecipesPage({ searchParams }: PageProps) {
     }
   }
 
-  const { data: recipes } = await query
+  // Filter by prep time
+  if (params.tijd) {
+    if (params.tijd === '60+') {
+      query = query.gte('prep_time', 60)
+    } else {
+      const [min, max] = params.tijd.split('-').map(Number)
+      query = query.gte('prep_time', min).lte('prep_time', max)
+    }
+  }
+
+  let { data: recipes } = await query
+
+  // Filter by subcategories (post-query via junction table)
+  if (params.subcategorieen && recipes && subcategories) {
+    const slugs = params.subcategorieen.split(',')
+    const subcatIds = subcategories
+      .filter(sc => slugs.includes(sc.slug))
+      .map(sc => sc.id)
+    if (subcatIds.length > 0) {
+      const { data: junctions } = await supabase
+        .from('recipe_subcategories')
+        .select('recipe_id')
+        .in('subcategory_id', subcatIds)
+      const recipeIds = new Set(junctions?.map(j => j.recipe_id))
+      recipes = recipes.filter(r => recipeIds.has(r.id))
+    }
+  }
+
+  // Filter by ingredient name
+  if (params.ingredienten && recipes) {
+    const terms = params.ingredienten.toLowerCase().split(',').map(t => t.trim()).filter(Boolean)
+    if (terms.length > 0) {
+      const recipeIds = recipes.map(r => r.id)
+      const { data: ingredients } = await supabase
+        .from('ingredients')
+        .select('recipe_id, name')
+        .in('recipe_id', recipeIds)
+      if (ingredients) {
+        const matchingRecipeIds = new Set(
+          ingredients
+            .filter(ing => terms.some(term => ing.name.toLowerCase().includes(term)))
+            .map(ing => ing.recipe_id)
+        )
+        recipes = recipes.filter(r => matchingRecipeIds.has(r.id))
+      }
+    }
+  }
+
+  const hasFilters = params.q || params.categorieen || params.subcategorieen || params.tijd || params.ingredienten
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -52,7 +106,7 @@ export default async function RecipesPage({ searchParams }: PageProps) {
         </div>
 
         <Suspense fallback={<div>Laden...</div>}>
-          <SearchBar categories={categories || []} />
+          <RecipeFilters categories={categories || []} subcategories={subcategories || []} />
         </Suspense>
       </div>
 
@@ -71,8 +125,6 @@ export default async function RecipesPage({ searchParams }: PageProps) {
               <h3 className="font-semibold text-gray-900 group-hover:text-honey-700 transition-colors mb-2 line-clamp-2">
                 {recipe.title}
               </h3>
-
-
 
               <div className="flex items-center gap-3 text-sm text-gray-500">
                 {recipe.prep_time && (
@@ -108,11 +160,11 @@ export default async function RecipesPage({ searchParams }: PageProps) {
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-1">Geen recepten gevonden</h3>
           <p className="text-gray-500 mb-4">
-            {params.q || params.categorieen
+            {hasFilters
               ? 'Probeer een andere zoekopdracht of filter.'
               : 'Voeg je eerste recept toe om te beginnen!'}
           </p>
-          {!params.q && !params.categorieen && (
+          {!hasFilters && (
             <Link
               href="/recepten/nieuw"
               className="inline-flex items-center px-4 py-2 rounded-lg bg-honey-500 text-honey-950 font-medium hover:bg-honey-600 transition-colors"
