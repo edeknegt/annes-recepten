@@ -19,11 +19,14 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
   const currentDragY = useRef(0)
   const isDragging = useRef(false)
   const scrollYRef = useRef(0)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   // Lock body scroll (position: fixed trick for iOS)
+  // Only depends on `open` — onClose is accessed via ref to avoid re-running on every render
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onCloseRef.current()
     }
     if (open) {
       document.addEventListener('keydown', handleEscape)
@@ -50,7 +53,7 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
       delete document.body.dataset.sheetOpen
       window.scrollTo(0, scrollYRef.current)
     }
-  }, [open, onClose])
+  }, [open])
 
   // Prevent scroll-chaining on iOS: block scrolling on overlay,
   // and block content scroll at boundaries so it doesn't chain to parent
@@ -129,14 +132,13 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
     sheetRef.current.style.transition = ''
 
     if (currentDragY.current > 100) {
-      // Let the close animation handle it, clear inline transform
       sheetRef.current.style.transform = ''
-      onClose()
+      onCloseRef.current()
     } else {
       sheetRef.current.style.transform = ''
     }
     currentDragY.current = 0
-  }, [onClose])
+  }, [])
 
   return (
     <div

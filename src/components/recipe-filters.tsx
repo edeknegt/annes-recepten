@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Search, SlidersHorizontal, X, Check, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -42,7 +42,7 @@ export function RecipeFilters({ categories, subcategories }: RecipeFiltersProps)
     const param = searchParams.get('ingredienten')
     return param ? param.split(',').map(s => s.trim()).filter(Boolean) : []
   })
-  const [ingredientInput, setIngredientInput] = useState('')
+  const ingredientInputRef = useRef<HTMLInputElement>(null)
 
   const activeFilterCount = [
     selectedCategories.size > 0,
@@ -108,11 +108,13 @@ export function RecipeFilters({ categories, subcategories }: RecipeFiltersProps)
   }
 
   const addIngredient = () => {
-    const value = ingredientInput.trim().toLowerCase()
+    const input = ingredientInputRef.current
+    if (!input) return
+    const value = input.value.trim().toLowerCase()
     if (value && !ingredients.includes(value)) {
       setIngredients(prev => [...prev, value])
     }
-    setIngredientInput('')
+    input.value = ''
   }
 
   const removeIngredient = (ing: string) => {
@@ -124,7 +126,7 @@ export function RecipeFilters({ categories, subcategories }: RecipeFiltersProps)
     setSelectedSubcategories(new Set())
     setSelectedPrepTime(null)
     setIngredients([])
-    setIngredientInput('')
+    if (ingredientInputRef.current) ingredientInputRef.current.value = ''
   }
 
   return (
@@ -233,10 +235,9 @@ export function RecipeFilters({ categories, subcategories }: RecipeFiltersProps)
             <div className="space-y-2">
               <div className="flex gap-2">
                 <input
+                  ref={ingredientInputRef}
                   type="text"
                   placeholder="Bijv. kip, rijst..."
-                  value={ingredientInput}
-                  onChange={(e) => setIngredientInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault()
@@ -247,8 +248,7 @@ export function RecipeFilters({ categories, subcategories }: RecipeFiltersProps)
                 />
                 <button
                   onClick={addIngredient}
-                  disabled={!ingredientInput.trim()}
-                  className="px-3 py-2 rounded-lg bg-honey-500 text-honey-950 text-sm font-medium hover:bg-honey-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-3 py-2 rounded-lg bg-honey-500 text-honey-950 text-sm font-medium hover:bg-honey-600 transition-colors"
                 >
                   <Plus className="h-4 w-4" />
                 </button>
