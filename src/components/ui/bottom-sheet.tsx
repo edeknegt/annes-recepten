@@ -22,10 +22,12 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
     if (open) {
       document.addEventListener('keydown', handleEscape)
       document.body.style.overflow = 'hidden'
+      document.body.dataset.sheetOpen = ''
     }
     return () => {
       document.removeEventListener('keydown', handleEscape)
       document.body.style.overflow = ''
+      delete document.body.dataset.sheetOpen
     }
   }, [open, onClose])
 

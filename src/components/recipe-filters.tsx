@@ -274,26 +274,17 @@ export function RecipeFilters({ categories, subcategories }: RecipeFiltersProps)
             </div>
           </FilterSection>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            {activeFilterCount > 0 && (
+          {/* Clear filters */}
+          {activeFilterCount > 0 && (
+            <div className="pt-2">
               <button
                 onClick={clearFilters}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
               >
                 Wis filters
               </button>
-            )}
-            <button
-              onClick={() => setSheetOpen(false)}
-              className={cn(
-                'py-2.5 rounded-xl bg-honey-500 text-honey-950 text-sm font-medium hover:bg-honey-600 transition-colors',
-                activeFilterCount > 0 ? 'flex-1' : 'w-full'
-              )}
-            >
-              Toon recepten
-            </button>
-          </div>
+            </div>
+          )}
         </div>
       </BottomSheet>
     </>

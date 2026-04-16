@@ -87,6 +87,11 @@ button, a, [role="button"] {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Hide mobile nav when a bottom sheet is open */
+body[data-sheet-open] .mobile-nav {
+  display: none;
+}
+
 /* Hide scrollbar */
 .scrollbar-none {
   scrollbar-width: none;
