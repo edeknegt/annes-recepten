@@ -4,6 +4,7 @@ import { Clock, Users, BookOpen } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { RecipeFilters } from '@/components/recipe-filters'
 import { Badge } from '@/components/ui/badge'
+import { formatPrepTime } from '@/lib/utils'
 import type { Category, Recipe } from '@/lib/types'
 
 interface PageProps {
@@ -82,7 +83,7 @@ export default async function RecipesPage({ searchParams }: PageProps) {
     if (terms.length > 0) {
       const recipeIds = recipes.map(r => r.id)
       const { data: ingredients } = await supabase
-        .from('ingredients')
+        .from('recipe_ingredients')
         .select('recipe_id, name')
         .in('recipe_id', recipeIds)
       if (ingredients) {
@@ -130,10 +131,7 @@ export default async function RecipesPage({ searchParams }: PageProps) {
                 {recipe.prep_time && (
                   <span className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
-                    {recipe.prep_time >= 60
-                      ? `${Math.floor(recipe.prep_time / 60)}u${recipe.prep_time % 60 > 0 ? `${recipe.prep_time % 60}m` : ''}`
-                      : `${recipe.prep_time} min`
-                    }
+                    {formatPrepTime(recipe.prep_time)}
                   </span>
                 )}
                 <span className="flex items-center gap-1">

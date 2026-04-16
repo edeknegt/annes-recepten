@@ -51,12 +51,13 @@ function parseIngredientString(text: string): { amount: string; unit: string; na
   return { amount: '', unit: '', name: cleaned }
 }
 
+const JSON_LD_REGEX = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+
 function extractFromJsonLd(html: string): Partial<ImportedRecipe> | null {
-  // Find JSON-LD scripts
-  const jsonLdRegex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+  JSON_LD_REGEX.lastIndex = 0
   let match
 
-  while ((match = jsonLdRegex.exec(html)) !== null) {
+  while ((match = JSON_LD_REGEX.exec(html)) !== null) {
     try {
       let data = JSON.parse(match[1])
 

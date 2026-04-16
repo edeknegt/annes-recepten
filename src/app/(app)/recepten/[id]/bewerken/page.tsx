@@ -26,6 +26,8 @@ export default async function EditRecipePage({ params }: PageProps) {
         recipe_subcategories(subcategory_id)
       `)
       .eq('id', id)
+      .order('sort_order', { referencedTable: 'recipe_ingredients' })
+      .order('step_number', { referencedTable: 'recipe_steps' })
       .single(),
     supabase.from('categories').select('*').order('sort_order'),
     supabase.from('subcategories').select('*').order('sort_order'),

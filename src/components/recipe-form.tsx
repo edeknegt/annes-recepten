@@ -61,7 +61,7 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
 
   // Dynamic rows
   const [ingredients, setIngredients] = useState<IngredientRow[]>(
-    recipe?.ingredients?.sort((a, b) => a.sort_order - b.sort_order).map(i => ({
+    recipe?.ingredients?.map(i => ({
       id: i.id,
       amount: i.amount?.toString() || '',
       unit: i.unit || '',
@@ -70,7 +70,7 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
   )
 
   const [steps, setSteps] = useState<StepRow[]>(
-    recipe?.steps?.sort((a, b) => a.step_number - b.step_number).map(s => ({
+    recipe?.steps?.map(s => ({
       id: s.id,
       description: s.description,
     })) || [{ description: '' }]

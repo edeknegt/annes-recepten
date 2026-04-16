@@ -81,8 +81,7 @@ export default function CategoriesPage() {
 
   // --- Open edit modal for a category ---
   const openEditModal = (cat: Category) => {
-    const subs = subcategories
-      .filter(s => s.category_id === cat.id)
+    const subs = (subcategoriesByCategoryId[cat.id] || [])
       .map(s => ({ id: s.id, name: s.name }))
     setEditName(cat.name)
     setEditSubs(subs)
@@ -104,7 +103,7 @@ export default function CategoriesPage() {
       .eq('id', cat.id)
 
     // Get existing subcategories for this category
-    const existingSubs = subcategories.filter(s => s.category_id === cat.id)
+    const existingSubs = subcategoriesByCategoryId[cat.id] || []
     const existingIds = existingSubs.map(s => s.id)
 
     // Determine which subs to update, insert, or delete
@@ -205,6 +204,12 @@ export default function CategoriesPage() {
     fetchData()
   }
 
+  // Pre-index subcategories by category_id to avoid repeated filtering during render
+  const subcategoriesByCategoryId = subcategories.reduce<Record<string, Subcategory[]>>((acc, sub) => {
+    (acc[sub.category_id] ||= []).push(sub)
+    return acc
+  }, {})
+
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto">
@@ -237,7 +242,7 @@ export default function CategoriesPage() {
       ) : (
         <div className="space-y-3">
           {categories.map((cat) => {
-            const subs = subcategories.filter(s => s.category_id === cat.id)
+            const subs = subcategoriesByCategoryId[cat.id] || []
             const isOpen = openCategories.has(cat.id)
             const count = recipeCounts[cat.id] || 0
 

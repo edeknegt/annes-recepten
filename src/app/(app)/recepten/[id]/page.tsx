@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Clock, Pencil, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { formatPrepTimeLong } from '@/lib/utils'
 import { ServingAdjuster } from '@/components/serving-adjuster'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -28,6 +29,8 @@ export default async function RecipeDetailPage({ params }: PageProps) {
       steps:recipe_steps(*)
     `)
     .eq('id', id)
+    .order('sort_order', { referencedTable: 'recipe_ingredients' })
+    .order('step_number', { referencedTable: 'recipe_steps' })
     .single()
 
   if (!recipe) notFound()
@@ -36,12 +39,8 @@ export default async function RecipeDetailPage({ params }: PageProps) {
     (rs: { subcategory: { id: string; name: string } }) => rs.subcategory
   ) || []
 
-  const ingredients = [...(recipe.ingredients || [])].sort(
-    (a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order
-  )
-  const steps = [...(recipe.steps || [])].sort(
-    (a: { step_number: number }, b: { step_number: number }) => a.step_number - b.step_number
-  )
+  const ingredients = recipe.ingredients || []
+  const steps = recipe.steps || []
 
 
   return (
@@ -92,10 +91,7 @@ export default async function RecipeDetailPage({ params }: PageProps) {
                 <Clock className="h-5 w-5 text-honey-600 shrink-0" />
                 <div>
                   <p className="text-lg font-bold text-gray-900">
-                    {recipe.prep_time >= 60
-                      ? `${Math.floor(recipe.prep_time / 60)} uur${recipe.prep_time % 60 > 0 ? ` ${recipe.prep_time % 60} min` : ''}`
-                      : `${recipe.prep_time} min`
-                    }
+                    {formatPrepTimeLong(recipe.prep_time)}
                   </p>
                   <p className="text-xs text-honey-700 font-medium">Bereidingstijd</p>
                 </div>
