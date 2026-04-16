@@ -21,10 +21,11 @@ export default async function RecipesPage({ searchParams }: PageProps) {
   const params = await searchParams
   const supabase = await createClient()
 
-  // Fetch categories and subcategories for filters
-  const [{ data: categories }, { data: subcategories }] = await Promise.all([
+  // Fetch categories, subcategories, and total recipe count
+  const [{ data: categories }, { data: subcategories }, { count: totalCount }] = await Promise.all([
     supabase.from('categories').select('*').order('sort_order'),
     supabase.from('subcategories').select('*').order('sort_order'),
+    supabase.from('recipes').select('*', { count: 'exact', head: true }),
   ])
 
   // Build recipe query
@@ -103,7 +104,12 @@ export default async function RecipesPage({ searchParams }: PageProps) {
     <div className="max-w-5xl mx-auto">
       <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 bg-honey-100">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="page-title">Recepten</h1>
+          <h1 className="page-title">
+            Recepten
+            {' '}<span className="text-sm font-normal text-gray-400">
+              ({recipes?.length ?? 0} van {totalCount ?? 0})
+            </span>
+          </h1>
         </div>
 
         <Suspense fallback={<div>Laden...</div>}>

@@ -212,11 +212,15 @@ export default function CategoriesPage() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto">
-        <div className="pt-4 sm:pt-6 lg:pt-8">
-          <h1 className="page-title">Categorie&euml;n</h1>
+      <div className="flex flex-col items-center justify-center py-32">
+        <div className="loading-avatar w-20 h-20 rounded-2xl border-2 border-honey-300 shadow-sm">
+          <img
+            src="/erik-anne-drinks.png"
+            alt=""
+            className="w-full h-full object-cover rounded-2xl"
+          />
         </div>
-        <p className="text-gray-500 mt-4">Laden...</p>
+        <p className="mt-4 text-sm text-gray-400 font-medium">Laden...</p>
       </div>
     )
   }
