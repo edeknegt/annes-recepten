@@ -17,7 +17,6 @@ export default function PinPage() {
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [pin, setPin] = useState('')
-  const [pressedKey, setPressedKey] = useState<string | null>(null)
   const pinRef = useRef(pin)
   pinRef.current = pin
 
@@ -39,11 +38,9 @@ export default function PinPage() {
     const current = pinRef.current
     if (current.length >= PIN_LENGTH) return
     const newPin = current + digit
-    setPressedKey(digit)
-    setTimeout(() => setPressedKey(null), 200)
     setPin(newPin)
     if (newPin.length === PIN_LENGTH) {
-      setTimeout(() => submit(newPin), 150)
+      submit(newPin)
     }
   }, [isPending, submit])
 
@@ -108,22 +105,18 @@ export default function PinPage() {
                     ) : key === 'back' ? (
                       <button
                         type="button"
-                        onClick={handleBackspace}
+                        onPointerDown={handleBackspace}
                         disabled={isPending || pin.length === 0}
-                        className="w-[72px] h-[50px] rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-30 transition-colors"
+                        className="w-[72px] h-[50px] rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-30"
                       >
                         <Delete className="w-5 h-5" />
                       </button>
                     ) : (
                       <button
                         type="button"
-                        onClick={() => handleDigit(key)}
+                        onPointerDown={() => handleDigit(key)}
                         disabled={isPending}
-                        className={`w-[72px] h-[50px] rounded-xl text-xl font-semibold transition-colors ${
-                          pressedKey === key
-                            ? 'bg-honey-500 text-honey-950'
-                            : 'bg-honey-50 text-gray-800 hover:bg-honey-100 active:bg-honey-200'
-                        }`}
+                        className="w-[72px] h-[50px] rounded-xl text-xl font-semibold bg-honey-50 text-gray-800 hover:bg-honey-100 active:bg-honey-500 active:text-honey-950"
                       >
                         {key}
                       </button>
