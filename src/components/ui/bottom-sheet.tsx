@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -14,22 +14,85 @@ interface BottomSheetProps {
 
 export function BottomSheet({ open, onClose, title, children, className }: BottomSheetProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const dragStartY = useRef(0)
+  const currentDragY = useRef(0)
+  const isDragging = useRef(false)
+  const scrollYRef = useRef(0)
 
+  // Lock body scroll (position: fixed trick for iOS)
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
     if (open) {
       document.addEventListener('keydown', handleEscape)
+      scrollYRef.current = window.scrollY
+      document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollYRef.current}px`
+      document.body.style.left = '0'
+      document.body.style.right = '0'
       document.body.style.overflow = 'hidden'
       document.body.dataset.sheetOpen = ''
     }
     return () => {
       document.removeEventListener('keydown', handleEscape)
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.left = ''
+      document.body.style.right = ''
       document.body.style.overflow = ''
       delete document.body.dataset.sheetOpen
+      window.scrollTo(0, scrollYRef.current)
     }
   }, [open, onClose])
+
+  // Swipe-to-dismiss handlers
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    // Only allow drag from the handle area or if content is scrolled to top
+    const target = e.target as HTMLElement
+    const isHandle = target.closest('[data-drag-handle]')
+    const contentEl = sheetRef.current?.querySelector('[data-sheet-content]') as HTMLElement | null
+    const isScrolledToTop = !contentEl || contentEl.scrollTop <= 0
+
+    if (!isHandle && !isScrolledToTop) return
+
+    isDragging.current = true
+    dragStartY.current = e.touches[0].clientY
+    currentDragY.current = 0
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = 'none'
+    }
+  }, [])
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDragging.current || !sheetRef.current) return
+
+    const deltaY = e.touches[0].clientY - dragStartY.current
+    // Only allow dragging down
+    if (deltaY < 0) {
+      currentDragY.current = 0
+      sheetRef.current.style.transform = 'translateY(0)'
+      return
+    }
+    currentDragY.current = deltaY
+    sheetRef.current.style.transform = `translateY(${deltaY}px)`
+  }, [])
+
+  const onTouchEnd = useCallback(() => {
+    if (!isDragging.current || !sheetRef.current) return
+
+    isDragging.current = false
+    sheetRef.current.style.transition = ''
+
+    // Close if dragged more than 100px down
+    if (currentDragY.current > 100) {
+      onClose()
+    } else {
+      sheetRef.current.style.transform = ''
+    }
+    currentDragY.current = 0
+  }, [onClose])
 
   return (
     <div
@@ -43,9 +106,13 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
       }}
     >
       <div
+        ref={sheetRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'bottom-sheet-title' : undefined}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
         className={cn(
           'absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-xl transition-transform duration-200 ease-out',
           'max-h-[85vh] flex flex-col',
@@ -54,13 +121,13 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
         )}
       >
         {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-1">
+        <div data-drag-handle className="flex justify-center pt-3 pb-1 cursor-grab">
           <div className="w-10 h-1 rounded-full bg-gray-300" />
         </div>
 
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between px-5 pb-3 border-b border-gray-100">
+          <div data-drag-handle className="flex items-center justify-between px-5 pb-3 border-b border-gray-100">
             <h2 id="bottom-sheet-title" className="text-lg font-semibold text-gray-900">{title}</h2>
             <button
               onClick={onClose}
@@ -72,7 +139,7 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 safe-area-bottom">
+        <div data-sheet-content className="flex-1 overflow-y-auto px-5 py-4 safe-area-bottom">
           {children}
         </div>
       </div>
