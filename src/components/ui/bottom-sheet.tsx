@@ -34,6 +34,11 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
       document.body.style.right = '0'
       document.body.style.overflow = 'hidden'
       document.body.dataset.sheetOpen = ''
+
+      // Reset any stale inline transform from previous drag
+      if (sheetRef.current) {
+        sheetRef.current.style.transform = ''
+      }
     }
     return () => {
       document.removeEventListener('keydown', handleEscape)
@@ -47,15 +52,54 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
     }
   }, [open, onClose])
 
-  // Swipe-to-dismiss handlers
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
-    // Only allow drag from the handle area or if content is scrolled to top
-    const target = e.target as HTMLElement
-    const isHandle = target.closest('[data-drag-handle]')
-    const contentEl = sheetRef.current?.querySelector('[data-sheet-content]') as HTMLElement | null
-    const isScrolledToTop = !contentEl || contentEl.scrollTop <= 0
+  // Prevent scroll-chaining on iOS: block scrolling on overlay,
+  // and block content scroll at boundaries so it doesn't chain to parent
+  useEffect(() => {
+    if (!open) return
+    const overlay = overlayRef.current
+    if (!overlay) return
 
-    if (!isHandle && !isScrolledToTop) return
+    let touchStartY = 0
+
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0].clientY
+    }
+
+    const preventScroll = (e: TouchEvent) => {
+      const target = e.target as HTMLElement
+      const contentEl = target.closest('[data-sheet-content]') as HTMLElement | null
+
+      if (!contentEl) {
+        e.preventDefault()
+        return
+      }
+
+      // Determine scroll direction
+      const touchY = e.touches[0].clientY
+      const direction = touchStartY - touchY // positive = finger moving up (scroll down)
+
+      const { scrollTop, scrollHeight, clientHeight } = contentEl
+      const isAtTop = scrollTop <= 0
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1
+
+      // Block at boundaries to prevent chaining to overlay/body
+      if ((isAtTop && direction < 0) || (isAtBottom && direction > 0)) {
+        e.preventDefault()
+      }
+    }
+
+    overlay.addEventListener('touchstart', onTouchStart, { passive: true })
+    overlay.addEventListener('touchmove', preventScroll, { passive: false })
+    return () => {
+      overlay.removeEventListener('touchstart', onTouchStart)
+      overlay.removeEventListener('touchmove', preventScroll)
+    }
+  }, [open])
+
+  // Swipe-to-dismiss: only from drag handle areas
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    const target = e.target as HTMLElement
+    if (!target.closest('[data-drag-handle]')) return
 
     isDragging.current = true
     dragStartY.current = e.touches[0].clientY
@@ -69,7 +113,6 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
     if (!isDragging.current || !sheetRef.current) return
 
     const deltaY = e.touches[0].clientY - dragStartY.current
-    // Only allow dragging down
     if (deltaY < 0) {
       currentDragY.current = 0
       sheetRef.current.style.transform = 'translateY(0)'
@@ -85,8 +128,9 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
     isDragging.current = false
     sheetRef.current.style.transition = ''
 
-    // Close if dragged more than 100px down
     if (currentDragY.current > 100) {
+      // Let the close animation handle it, clear inline transform
+      sheetRef.current.style.transform = ''
       onClose()
     } else {
       sheetRef.current.style.transform = ''
@@ -139,7 +183,7 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
         )}
 
         {/* Content */}
-        <div data-sheet-content className="flex-1 overflow-y-auto px-5 py-4 safe-area-bottom">
+        <div data-sheet-content className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 safe-area-bottom">
           {children}
         </div>
       </div>

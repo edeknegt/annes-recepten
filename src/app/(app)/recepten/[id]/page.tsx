@@ -128,9 +128,12 @@ export default async function RecipeDetailPage({ params }: PageProps) {
         </Card>
       </div>
 
-      {/* Source */}
+      {/* Date added & source */}
+      <div className="mt-6 text-sm text-gray-500">
+        <span>Toegevoegd op {new Date(recipe.created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+      </div>
       {recipe.source && (
-        <div className="mt-6 text-sm text-gray-500">
+        <div className="mt-1 text-sm text-gray-500">
           <span>Bron: {recipe.source}</span>
           {recipe.source_url && (
             <a
