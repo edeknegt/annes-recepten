@@ -107,7 +107,22 @@ export function ShareRecipeButton(props: ShareRecipeProps) {
   const [copied, setCopied] = useState(false)
 
   const handleShare = async () => {
-    // 1. Try native Share API with text (call immediately to preserve user gesture)
+    const html = generateHtml(props)
+    const blob = new Blob([html], { type: 'text/html' })
+    const fileName = `${props.recipe.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.html`
+    const file = new File([blob], fileName, { type: 'text/html' })
+
+    // 1. Try native Share API with HTML file
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ title: props.recipe.title, files: [file] })
+        return
+      } catch (e) {
+        if ((e as Error).name === 'AbortError') return
+      }
+    }
+
+    // 2. Try native Share API with text
     if (navigator.share) {
       try {
         await navigator.share({
@@ -120,16 +135,13 @@ export function ShareRecipeButton(props: ShareRecipeProps) {
       }
     }
 
-    // 2. Fallback: copy to clipboard
+    // 3. Fallback: copy to clipboard
     try {
       await navigator.clipboard.writeText(generateText(props))
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      // 3. Last resort: download as HTML file
-      const html = generateHtml(props)
-      const blob = new Blob([html], { type: 'text/html' })
-      const fileName = `${props.recipe.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.html`
+      // 4. Last resort: download HTML file
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
