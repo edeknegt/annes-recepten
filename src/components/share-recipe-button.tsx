@@ -34,18 +34,19 @@ function generateHtml({ recipe, ingredients, steps }: ShareRecipeProps): string 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${recipe.title} — Recepten van Anne</title>
-<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Raleway', system-ui, sans-serif; background: #FFFBE6; color: #1a1a1a; padding: 24px 16px; max-width: 640px; margin: 0 auto; }
   h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; }
   .meta { display: flex; gap: 16px; color: #6b7280; font-size: 0.875rem; margin-bottom: 20px; }
   .card { background: #fff; border-radius: 12px; border: 1px solid #f3f4f6; padding: 20px; margin-bottom: 16px; }
   h2 { font-size: 1.125rem; font-weight: 600; margin-bottom: 12px; }
-  .ingredients li { padding: 6px 0; border-bottom: 1px solid #f9fafb; font-size: 0.9375rem; list-style: none; }
-  .ingredients li:last-child { border-bottom: none; }
-  .amount { font-weight: 600; width: 60px; display: inline-block; }
-  .unit { color: #6b7280; width: 50px; display: inline-block; }
+  .ingredients { display: grid; grid-template-columns: auto auto 1fr; gap: 6px 8px; font-size: 0.9375rem; list-style: none; }
+  .ingredients li { display: contents; }
+  .amount { font-weight: 600; text-align: right; }
+  .unit { color: #6b7280; }
+  .name { hyphens: auto; }
   .step { display: flex; gap: 12px; margin-bottom: 16px; }
   .step-num { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: #FFFBE6; color: #997A10; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; justify-content: center; }
   .step p { color: #374151; padding-top: 3px; font-size: 0.9375rem; line-height: 1.5; }
@@ -64,7 +65,7 @@ function generateHtml({ recipe, ingredients, steps }: ShareRecipeProps): string 
 <div class="card">
   <h2>Ingrediënten</h2>
   <ul class="ingredients">
-    ${ingredients.map(i => `<li><span class="amount">${i.amount ?? ''}</span><span class="unit">${i.unit ?? ''}</span>${i.name}</li>`).join('\n    ')}
+    ${ingredients.map(i => `<li><span class="amount">${i.amount ?? ''}</span><span class="unit">${i.unit ?? ''}</span><span class="name">${i.name}</span></li>`).join('\n    ')}
   </ul>
 </div>
 
@@ -81,26 +82,22 @@ ${recipe.source ? `<div class="source">Bron: ${recipe.source_url ? `<a href="${r
 </html>`
 }
 
-function generateText({ recipe, ingredients, steps }: ShareRecipeProps): string {
-  const lines = [`${recipe.title}\n`]
-  const meta = []
-  if (recipe.prep_time) meta.push(`⏱ ${formatPrepTime(recipe.prep_time)}`)
-  meta.push(`👤 ${recipe.servings} ${recipe.servings === 1 ? 'persoon' : 'personen'}`)
-  lines.push(meta.join(' · '))
-  lines.push('\nIngrediënten:')
-  for (const i of ingredients) {
-    const parts = [i.amount, i.unit, i.name].filter(Boolean).join(' ')
-    lines.push(`- ${parts}`)
+function generateShareMessage({ recipe }: ShareRecipeProps): string {
+  let time = ''
+  if (recipe.prep_time) {
+    if (recipe.prep_time >= 60) {
+      const h = Math.floor(recipe.prep_time / 60)
+      const m = recipe.prep_time % 60
+      time = m > 0 ? `${h} uren en ${m} minuten` : `${h} uur`
+    } else {
+      time = `${recipe.prep_time} minuten`
+    }
   }
-  lines.push('\nBereiding:')
-  for (const s of steps) {
-    lines.push(`${s.step_number}. ${s.description}`)
-  }
-  if (recipe.source) {
-    lines.push(`\nBron: ${recipe.source}${recipe.source_url ? ` (${recipe.source_url})` : ''}`)
-  }
-  lines.push('\nGedeeld vanuit de receptenapp van Anne')
-  return lines.join('\n')
+
+  let msg = `Hoi! Hierbij mijn recept voor ${recipe.title}. Het is een recept voor ${recipe.servings} ${recipe.servings === 1 ? 'persoon' : 'personen'}`
+  if (time) msg += ` en je doet er ${time} over om het te bereiden`
+  msg += `. Groetjes, Anne`
+  return msg
 }
 
 export function ShareRecipeButton(props: ShareRecipeProps) {
@@ -127,7 +124,7 @@ export function ShareRecipeButton(props: ShareRecipeProps) {
       try {
         await navigator.share({
           title: props.recipe.title,
-          text: generateText(props),
+          text: generateShareMessage(props),
         })
         return
       } catch (e) {
@@ -137,7 +134,7 @@ export function ShareRecipeButton(props: ShareRecipeProps) {
 
     // 3. Fallback: copy to clipboard
     try {
-      await navigator.clipboard.writeText(generateText(props))
+      await navigator.clipboard.writeText(generateShareMessage(props))
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
