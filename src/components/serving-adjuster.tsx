@@ -1,11 +1,10 @@
 'use client'
 
-import { useState } from 'react'
 import { Minus, Plus } from 'lucide-react'
+import { useServings } from '@/components/servings-context'
 import type { Ingredient } from '@/lib/types'
 
 interface ServingAdjusterProps {
-  originalServings: number
   ingredients: Ingredient[]
 }
 
@@ -63,8 +62,8 @@ function formatAmount(amount: number | null, ratio: number, isOriginal: boolean)
   return roundAmount(adjusted).toString()
 }
 
-export function ServingAdjuster({ originalServings, ingredients }: ServingAdjusterProps) {
-  const [servings, setServings] = useState(originalServings)
+export function ServingAdjuster({ ingredients }: ServingAdjusterProps) {
+  const { servings, setServings, originalServings } = useServings()
   const ratio = servings / originalServings
   const isOriginal = servings === originalServings
 

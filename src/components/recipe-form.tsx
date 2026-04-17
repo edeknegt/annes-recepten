@@ -481,23 +481,28 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
         </CardContent>
       </Card>
 
-      {/* Submit */}
-      <div className="flex justify-end gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.back()}
-        >
-          Annuleren
-        </Button>
-        <Button type="submit" loading={isPending}>
-          {recipe ? 'Opslaan' : 'Recept toevoegen'}
-        </Button>
+      {/* Spacer for sticky bottom bar */}
+      <div className="h-20" />
+
+      {/* Sticky submit bar */}
+      <div className="fixed bottom-0 left-0 right-0 lg:left-64 z-30 bg-white border-t border-gray-200 px-4 sm:px-6 lg:px-8 py-3 safe-area-bottom">
+        <div className="max-w-3xl mx-auto flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.back()}
+          >
+            Annuleren
+          </Button>
+          <Button type="submit" loading={isPending}>
+            {recipe ? 'Opslaan' : 'Recept toevoegen'}
+          </Button>
+        </div>
       </div>
 
       {/* Error toast — fixed at bottom */}
       {error && (
-        <div className="fixed bottom-20 lg:bottom-6 left-4 right-4 lg:left-auto lg:right-6 lg:max-w-sm z-50 animate-slide-up">
+        <div className="fixed bottom-24 lg:bottom-20 left-4 right-4 lg:left-auto lg:right-6 lg:max-w-sm z-50 animate-slide-up">
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-600 text-white shadow-lg">
             <AlertCircle className="h-5 w-5 shrink-0" />
             <span className="text-sm font-medium flex-1">{error}</span>

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { DeleteRecipeButton } from '@/components/delete-recipe-button'
 import { ShareRecipeButton } from '@/components/share-recipe-button'
+import { ServingsProvider } from '@/components/servings-context'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -45,6 +46,7 @@ export default async function RecipeDetailPage({ params }: PageProps) {
 
 
   return (
+    <ServingsProvider originalServings={recipe.servings}>
     <div className="max-w-3xl mx-auto">
       <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 bg-honey-100">
         {/* Back link */}
@@ -110,7 +112,6 @@ export default async function RecipeDetailPage({ params }: PageProps) {
             <CardContent className="py-5">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Ingredi&euml;nten</h2>
               <ServingAdjuster
-                originalServings={recipe.servings}
                 ingredients={ingredients}
               />
             </CardContent>
@@ -155,5 +156,6 @@ export default async function RecipeDetailPage({ params }: PageProps) {
         </div>
       )}
     </div>
+    </ServingsProvider>
   )
 }

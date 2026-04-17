@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Share, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useServings } from '@/components/servings-context'
 
 interface ShareRecipeProps {
   recipe: {
@@ -27,7 +28,21 @@ function formatPrepTime(minutes: number): string {
   return `${minutes} min`
 }
 
-function generateHtml({ recipe, ingredients, steps }: ShareRecipeProps): string {
+function roundAmount(value: number): number {
+  if (value < 10) return Math.round(value * 4) / 4
+  if (value < 50) return Math.round(value)
+  if (value < 150) return Math.round(value / 5) * 5
+  if (value < 500) return Math.round(value / 10) * 10
+  return Math.round(value / 50) * 50
+}
+
+function formatShareAmount(amount: number | null, ratio: number): string {
+  if (amount === null) return ''
+  const adjusted = amount * ratio
+  return String(roundAmount(adjusted))
+}
+
+function generateHtml({ recipe, ingredients, steps }: ShareRecipeProps, servings: number, ratio: number): string {
   return `<!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -58,13 +73,13 @@ function generateHtml({ recipe, ingredients, steps }: ShareRecipeProps): string 
 <h1>${recipe.title}</h1>
 <div class="meta">
   ${recipe.prep_time ? `<span>⏱ ${formatPrepTime(recipe.prep_time)}</span>` : ''}
-  <span>👤 ${recipe.servings} ${recipe.servings === 1 ? 'persoon' : 'personen'}</span>
+  <span>👤 ${servings} ${servings === 1 ? 'persoon' : 'personen'}</span>
 </div>
 
 <div class="card">
   <h2>Ingrediënten</h2>
   <ul class="ingredients">
-    ${ingredients.map(i => `<li><span class="amount">${i.amount ?? ''}</span><span class="unit">${i.unit ?? ''}</span><span class="name">${i.name}</span></li>`).join('\n    ')}
+    ${ingredients.map(i => `<li><span class="amount">${formatShareAmount(i.amount, ratio)}</span><span class="unit">${i.unit ?? ''}</span><span class="name">${i.name}</span></li>`).join('\n    ')}
   </ul>
 </div>
 
@@ -81,7 +96,7 @@ ${recipe.source ? `<div class="source">Bron: ${recipe.source_url ? `<a href="${r
 </html>`
 }
 
-function generateShareMessage({ recipe }: ShareRecipeProps): string {
+function generateShareMessage({ recipe }: ShareRecipeProps, servings: number): string {
   let time = ''
   if (recipe.prep_time) {
     if (recipe.prep_time >= 60) {
@@ -93,7 +108,7 @@ function generateShareMessage({ recipe }: ShareRecipeProps): string {
     }
   }
 
-  let msg = `Hoi! Hierbij mijn recept voor ${recipe.title}. Het is een recept voor ${recipe.servings} ${recipe.servings === 1 ? 'persoon' : 'personen'}`
+  let msg = `Hoi! Hierbij mijn recept voor ${recipe.title}. Het is een recept voor ${servings} ${servings === 1 ? 'persoon' : 'personen'}`
   if (time) msg += ` en je doet er ${time} over om het te bereiden`
   msg += `. Groetjes, Anne`
   return msg
@@ -101,9 +116,11 @@ function generateShareMessage({ recipe }: ShareRecipeProps): string {
 
 export function ShareRecipeButton(props: ShareRecipeProps) {
   const [copied, setCopied] = useState(false)
+  const { servings, originalServings } = useServings()
+  const ratio = servings / originalServings
 
   const handleShare = async () => {
-    const html = generateHtml(props)
+    const html = generateHtml(props, servings, ratio)
     const blob = new Blob([html], { type: 'text/html' })
     const fileName = `${props.recipe.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.html`
     const file = new File([blob], fileName, { type: 'text/html' })
@@ -111,7 +128,7 @@ export function ShareRecipeButton(props: ShareRecipeProps) {
     // 1. Try native Share API with HTML file
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
-        await navigator.share({ title: props.recipe.title, text: generateShareMessage(props), files: [file] })
+        await navigator.share({ title: props.recipe.title, text: generateShareMessage(props, servings), files: [file] })
         return
       } catch (e) {
         if ((e as Error).name === 'AbortError') return
@@ -123,7 +140,7 @@ export function ShareRecipeButton(props: ShareRecipeProps) {
       try {
         await navigator.share({
           title: props.recipe.title,
-          text: generateShareMessage(props),
+          text: generateShareMessage(props, servings),
         })
         return
       } catch (e) {
@@ -133,7 +150,7 @@ export function ShareRecipeButton(props: ShareRecipeProps) {
 
     // 3. Fallback: copy to clipboard
     try {
-      await navigator.clipboard.writeText(generateShareMessage(props))
+      await navigator.clipboard.writeText(generateShareMessage(props, servings))
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
