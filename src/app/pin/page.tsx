@@ -23,8 +23,7 @@ export default function PinPage() {
 
   const submit = useCallback((fullPin: string) => {
     setError(null)
-    // Brief delay to show filled dots, then show loading
-    setTimeout(() => setShowLoading(true), 150)
+    setShowLoading(true)
     const formData = new FormData()
     formData.set('pin', fullPin)
     startTransition(async () => {

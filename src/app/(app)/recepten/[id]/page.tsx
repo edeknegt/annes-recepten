@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { DeleteRecipeButton } from '@/components/delete-recipe-button'
+import { ShareRecipeButton } from '@/components/share-recipe-button'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -78,6 +79,12 @@ export default async function RecipeDetailPage({ params }: PageProps) {
               </Button>
             </Link>
             <DeleteRecipeButton recipeId={id} />
+            <ShareRecipeButton
+              recipe={recipe}
+              ingredients={ingredients}
+              steps={steps}
+              subcategories={subcategories}
+            />
           </div>
         </div>
       </div>

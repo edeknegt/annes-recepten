@@ -35,9 +35,10 @@ export function RecipeFilters({ categories, subcategories }: RecipeFiltersProps)
     const param = searchParams.get('subcategorieen')
     return param ? new Set(param.split(',')) : new Set<string>()
   })
-  const [selectedPrepTime, setSelectedPrepTime] = useState<string | null>(
-    searchParams.get('tijd')
-  )
+  const [selectedPrepTimes, setSelectedPrepTimes] = useState<Set<string>>(() => {
+    const param = searchParams.get('tijd')
+    return param ? new Set(param.split(',')) : new Set<string>()
+  })
   const [ingredients, setIngredients] = useState<string[]>(() => {
     const param = searchParams.get('ingredienten')
     return param ? param.split(',').map(s => s.trim()).filter(Boolean) : []
@@ -47,17 +48,17 @@ export function RecipeFilters({ categories, subcategories }: RecipeFiltersProps)
   const activeFilterCount = [
     selectedCategories.size > 0,
     selectedSubcategories.size > 0,
-    selectedPrepTime !== null,
+    selectedPrepTimes.size > 0,
     ingredients.length > 0,
   ].filter(Boolean).length
 
   const buildParams = useCallback(
-    (q: string, cats: Set<string>, subcats: Set<string>, tijd: string | null, ings: string[]) => {
+    (q: string, cats: Set<string>, subcats: Set<string>, tijden: Set<string>, ings: string[]) => {
       const params = new URLSearchParams()
       if (q) params.set('q', q)
       if (cats.size > 0) params.set('categorieen', Array.from(cats).join(','))
       if (subcats.size > 0) params.set('subcategorieen', Array.from(subcats).join(','))
-      if (tijd) params.set('tijd', tijd)
+      if (tijden.size > 0) params.set('tijd', Array.from(tijden).join(','))
       if (ings.length > 0) params.set('ingredienten', ings.join(','))
       return params
     },
@@ -67,11 +68,11 @@ export function RecipeFilters({ categories, subcategories }: RecipeFiltersProps)
   // Debounced URL update
   useEffect(() => {
     const timer = setTimeout(() => {
-      const params = buildParams(query, selectedCategories, selectedSubcategories, selectedPrepTime, ingredients)
+      const params = buildParams(query, selectedCategories, selectedSubcategories, selectedPrepTimes, ingredients)
       router.push(`/recepten${params.toString() ? `?${params.toString()}` : ''}`)
     }, 300)
     return () => clearTimeout(timer)
-  }, [query, buildParams, router, selectedCategories, selectedSubcategories, selectedPrepTime, ingredients])
+  }, [query, buildParams, router, selectedCategories, selectedSubcategories, selectedPrepTimes, ingredients])
 
   const toggleCategory = (slug: string) => {
     setSelectedCategories(prev => {
@@ -124,7 +125,7 @@ export function RecipeFilters({ categories, subcategories }: RecipeFiltersProps)
   const clearFilters = () => {
     setSelectedCategories(new Set())
     setSelectedSubcategories(new Set())
-    setSelectedPrepTime(null)
+    setSelectedPrepTimes(new Set())
     setIngredients([])
     if (ingredientInputRef.current) ingredientInputRef.current.value = ''
   }
@@ -223,8 +224,13 @@ export function RecipeFilters({ categories, subcategories }: RecipeFiltersProps)
                 <FilterChip
                   key={opt.value}
                   label={opt.label}
-                  active={selectedPrepTime === opt.value}
-                  onClick={() => setSelectedPrepTime(prev => prev === opt.value ? null : opt.value)}
+                  active={selectedPrepTimes.has(opt.value)}
+                  onClick={() => setSelectedPrepTimes(prev => {
+                    const next = new Set(prev)
+                    if (next.has(opt.value)) next.delete(opt.value)
+                    else next.add(opt.value)
+                    return next
+                  })}
                 />
               ))}
             </div>

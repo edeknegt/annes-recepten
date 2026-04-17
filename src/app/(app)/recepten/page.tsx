@@ -50,17 +50,20 @@ export default async function RecipesPage({ searchParams }: PageProps) {
     }
   }
 
-  // Filter by prep time
-  if (params.tijd) {
-    if (params.tijd === '60+') {
-      query = query.gte('prep_time', 60)
-    } else {
-      const [min, max] = params.tijd.split('-').map(Number)
-      query = query.gte('prep_time', min).lte('prep_time', max)
-    }
-  }
-
   let { data: recipes } = await query
+
+  // Filter by prep time (multi-select, post-query for OR logic)
+  if (params.tijd && recipes) {
+    const ranges = params.tijd.split(',')
+    recipes = recipes.filter(r => {
+      if (!r.prep_time) return false
+      return ranges.some(range => {
+        if (range === '60+') return r.prep_time >= 60
+        const [min, max] = range.split('-').map(Number)
+        return r.prep_time >= min && r.prep_time <= max
+      })
+    })
+  }
 
   // Filter by subcategories (post-query via junction table)
   if (params.subcategorieen && recipes && subcategories) {
