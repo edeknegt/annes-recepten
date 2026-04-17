@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import React, { useState, useTransition, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, AlertCircle, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -39,6 +40,10 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
+
+  useEffect(() => setMounted(true), [])
 
   // Form state
   const [title, setTitle] = useState(recipe?.title || '')
@@ -252,7 +257,7 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-6">
       {/* Import from URL — only show for new recipes */}
       {!recipe && <RecipeImport onImport={handleImport} />}
 
@@ -481,24 +486,31 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
         </CardContent>
       </Card>
 
-      {/* Spacer for sticky bottom bar */}
+      {/* Spacer for fixed bottom bar */}
       <div className="h-20" />
 
-      {/* Sticky submit bar */}
-      <div className="fixed bottom-0 left-0 right-0 lg:left-64 z-30 bg-white border-t border-gray-200 px-4 sm:px-6 lg:px-8 py-3 safe-area-bottom">
-        <div className="max-w-3xl mx-auto flex justify-end gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-          >
-            Annuleren
-          </Button>
-          <Button type="submit" loading={isPending}>
-            {recipe ? 'Opslaan' : 'Recept toevoegen'}
-          </Button>
-        </div>
-      </div>
+      {/* Fixed submit bar via portal */}
+      {mounted && createPortal(
+        <div className="fixed left-0 right-0 lg:left-64 z-40 bg-honey-100 border-t border-honey-200 px-4 sm:px-6 lg:px-8 py-3 bottom-[calc(3rem+env(safe-area-inset-bottom,0px))] lg:bottom-0">
+          <div className="max-w-3xl mx-auto flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+            >
+              Annuleren
+            </Button>
+            <Button
+              type="button"
+              loading={isPending}
+              onClick={() => formRef.current?.requestSubmit()}
+            >
+              {recipe ? 'Opslaan' : 'Recept toevoegen'}
+            </Button>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Error toast — fixed at bottom */}
       {error && (

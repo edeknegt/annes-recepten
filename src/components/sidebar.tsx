@@ -23,7 +23,9 @@ export function Sidebar() {
   }
 
   const isActive = (href: string) => {
-    if (href === '/recepten') return pathname === '/recepten'
+    if (href === '/recepten') {
+      return pathname.startsWith('/recepten') && !pathname.startsWith('/recepten/nieuw')
+    }
     return pathname.startsWith(href)
   }
 
@@ -31,7 +33,7 @@ export function Sidebar() {
     <>
       {/* Mobile bottom navigation bar */}
       <nav className="mobile-nav lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 safe-area-bottom">
-        <div className="flex items-center justify-around h-14">
+        <div className="flex items-center justify-around h-12">
           {navItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.href)
@@ -40,12 +42,15 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex flex-col items-center justify-center gap-0.5 min-w-[4rem]',
-                  active ? 'text-honey-700' : 'text-gray-400'
+                  'flex flex-col items-center justify-center gap-0.5 px-3 py-0.5 rounded-full',
+                  active ? 'text-honey-800 bg-honey-200' : 'text-gray-400'
                 )}
               >
-                <Icon className="h-5 w-5" />
-                <span className="text-[10px] leading-tight font-medium">{item.label}</span>
+                <Icon className="h-4.5 w-4.5" />
+                <span className={cn(
+                  'text-[10px] leading-tight',
+                  active ? 'font-bold' : 'font-medium'
+                )}>{item.label}</span>
               </Link>
             )
           })}
@@ -55,7 +60,7 @@ export function Sidebar() {
             disabled={loggingOut}
             className="flex flex-col items-center justify-center gap-0.5 min-w-[4rem] text-gray-400"
           >
-            {loggingOut ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
+            {loggingOut ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <LogOut className="h-4.5 w-4.5" />}
             <span className="text-[10px] leading-tight font-medium">Uitloggen</span>
           </button>
         </div>
