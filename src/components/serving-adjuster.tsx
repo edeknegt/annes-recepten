@@ -102,14 +102,14 @@ export function ServingAdjuster({ originalServings, ingredients }: ServingAdjust
       </div>
 
       {/* Ingredients list */}
-      <ul className="space-y-2">
+      <ul className="grid gap-y-2 gap-x-2" style={{ gridTemplateColumns: 'auto auto 1fr' }}>
         {ingredients.map((ing) => (
-          <li key={ing.id} className="flex items-baseline gap-2 text-gray-700">
-            <span className="font-medium text-gray-900 min-w-[3rem] text-right">
+          <li key={ing.id} className="contents text-gray-700">
+            <span className="font-medium text-gray-900 text-right">
               {formatAmount(ing.amount, ratio, isOriginal)}
             </span>
             <span className="text-gray-500">{ing.unit}</span>
-            <span>{ing.name}</span>
+            <span className="hyphens-auto" lang="nl">{ing.name}</span>
           </li>
         ))}
       </ul>
