@@ -34,12 +34,9 @@ function generateHtml({ recipe, ingredients, steps }: ShareRecipeProps): string 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${recipe.title} — Recepten van Anne</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Raleway', system-ui, sans-serif; background: #FFFBE6; color: #1a1a1a; padding: 24px 16px; max-width: 640px; margin: 0 auto; }
+  body { font-family: ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif; background: #FFFBE6; color: #1a1a1a; padding: 24px 16px; max-width: 640px; margin: 0 auto; }
   h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; }
   .meta { display: flex; gap: 16px; color: #6b7280; font-size: 0.875rem; margin-bottom: 20px; }
   .card { background: #fff; border-radius: 12px; border: 1px solid #f3f4f6; padding: 20px; margin-bottom: 16px; }
@@ -90,7 +87,7 @@ function generateShareMessage({ recipe }: ShareRecipeProps): string {
     if (recipe.prep_time >= 60) {
       const h = Math.floor(recipe.prep_time / 60)
       const m = recipe.prep_time % 60
-      time = m > 0 ? `${h} uren en ${m} minuten` : `${h} uur`
+      time = m > 0 ? `${h} ${h === 1 ? 'uur' : 'uren'} en ${m} minuten` : `${h} ${h === 1 ? 'uur' : 'uren'}`
     } else {
       time = `${recipe.prep_time} minuten`
     }
