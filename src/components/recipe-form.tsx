@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { RecipeImport } from '@/components/recipe-import'
 import { cn } from '@/lib/utils'
 import type { Category, Subcategory, Recipe, Ingredient, Step } from '@/lib/types'
+import { normalizeUnit } from '@/lib/unit-mapping'
 import type { ImportedRecipe } from '@/app/(app)/recepten/nieuw/actions'
 
 interface IngredientRow {
@@ -199,7 +200,7 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
           validIngredients.map((ing, index) => ({
             recipe_id: recipeId,
             amount: ing.amount ? parseFloat(ing.amount) : null,
-            unit: ing.unit.trim() || null,
+            unit: ing.unit.trim() ? normalizeUnit(ing.unit) : null,
             name: ing.name.trim(),
             sort_order: index,
           }))

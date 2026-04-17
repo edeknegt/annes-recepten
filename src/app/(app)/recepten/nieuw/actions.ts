@@ -1,6 +1,7 @@
 'use server'
 
 import Anthropic from '@anthropic-ai/sdk'
+import { normalizeUnit } from '@/lib/unit-mapping'
 
 export interface ImportedRecipe {
   title: string
@@ -43,7 +44,7 @@ function parseIngredientString(text: string): { amount: string; unit: string; na
   if (match) {
     return {
       amount: match[1].replace(',', '.').trim(),
-      unit: (match[2] || '').trim(),
+      unit: match[2] ? normalizeUnit(match[2]) : '',
       name: match[3].trim(),
     }
   }
