@@ -34,8 +34,10 @@ function generateHtml({ recipe, ingredients, steps }: ShareRecipeProps): string 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${recipe.title} — Recepten van Anne</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Raleway', system-ui, sans-serif; background: #FFFBE6; color: #1a1a1a; padding: 24px 16px; max-width: 640px; margin: 0 auto; }
   h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; }
@@ -112,7 +114,7 @@ export function ShareRecipeButton(props: ShareRecipeProps) {
     // 1. Try native Share API with HTML file
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
-        await navigator.share({ title: props.recipe.title, files: [file] })
+        await navigator.share({ title: props.recipe.title, text: generateShareMessage(props), files: [file] })
         return
       } catch (e) {
         if ((e as Error).name === 'AbortError') return
