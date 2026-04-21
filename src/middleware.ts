@@ -4,7 +4,14 @@ const SESSION_MAX_AGE = 60 * 15 // 15 minuten
 
 export function middleware(request: NextRequest) {
   const pinCookie = request.cookies.get('annes-recepten-auth')
-  const isOnPinPage = request.nextUrl.pathname === '/pin'
+  const path = request.nextUrl.pathname
+  const isOnPinPage = path === '/pin'
+  const isWebauthnApi = path.startsWith('/api/webauthn/')
+
+  // WebAuthn API's lopen hun eigen auth-check; middleware mag die niet blokkeren
+  if (isWebauthnApi) {
+    return NextResponse.next()
+  }
 
   if (!pinCookie && !isOnPinPage) {
     const url = request.nextUrl.clone()

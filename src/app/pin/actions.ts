@@ -24,7 +24,7 @@ export async function verifyPin(formData: FormData) {
     path: '/',
   })
 
-  redirect('/')
+  return { ok: true }
 }
 
 export async function logout() {
