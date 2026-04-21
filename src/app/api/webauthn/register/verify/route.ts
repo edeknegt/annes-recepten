@@ -2,23 +2,17 @@ import { cookies } from 'next/headers'
 import { verifyRegistrationResponse } from '@simplewebauthn/server'
 import { isoBase64URL } from '@simplewebauthn/server/helpers'
 import type { RegistrationResponseJSON } from '@simplewebauthn/server'
-import { setPinSession } from '@/lib/webauthn/auth'
 import {
   CHALLENGE_COOKIE,
   ENROLLED_COOKIE,
   ENROLLED_MAX_AGE,
+  PENDING_COOKIE,
+  PENDING_MAX_AGE,
   getWebAuthnConfig,
 } from '@/lib/webauthn/config'
-import { insertCredential, isRegistrationOpen } from '@/lib/webauthn/store'
+import { insertCredential } from '@/lib/webauthn/store'
 
 export async function POST(request: Request) {
-  if (!(await isRegistrationOpen())) {
-    return Response.json(
-      { error: 'Registratie staat nu dicht.' },
-      { status: 403 }
-    )
-  }
-
   const store = await cookies()
   const expectedChallenge = store.get(CHALLENGE_COOKIE)?.value
   if (!expectedChallenge) {
@@ -70,7 +64,13 @@ export async function POST(request: Request) {
     maxAge: ENROLLED_MAX_AGE,
     path: '/',
   })
-  await setPinSession()
+  store.set(PENDING_COOKIE, '1', {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: PENDING_MAX_AGE,
+    path: '/',
+  })
 
-  return Response.json({ ok: true })
+  return Response.json({ ok: true, pending: true })
 }

@@ -17,5 +17,7 @@ export function getWebAuthnConfig() {
 
 export const CHALLENGE_COOKIE = 'webauthn-challenge'
 export const ENROLLED_COOKIE = 'webauthn-enrolled'
+export const PENDING_COOKIE = 'webauthn-pending'
 export const CHALLENGE_MAX_AGE = 60 * 5 // 5 min
 export const ENROLLED_MAX_AGE = 60 * 60 * 24 * 365 // 1 jaar
+export const PENDING_MAX_AGE = 60 * 60 * 24 * 30 // 30 dagen

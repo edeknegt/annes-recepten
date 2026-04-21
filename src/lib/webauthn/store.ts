@@ -8,13 +8,27 @@ export type StoredCredential = {
   counter: number
   transports: string[] | null
   device_label: string | null
+  approved: boolean
 }
+
+const CREDENTIAL_COLUMNS =
+  'id, credential_id, public_key, counter, transports, device_label, approved'
 
 export async function getAllCredentials(): Promise<StoredCredential[]> {
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('webauthn_credentials')
-    .select('id, credential_id, public_key, counter, transports, device_label')
+    .select(CREDENTIAL_COLUMNS)
+  if (error) throw error
+  return (data ?? []) as StoredCredential[]
+}
+
+export async function getApprovedCredentials(): Promise<StoredCredential[]> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('webauthn_credentials')
+    .select(CREDENTIAL_COLUMNS)
+    .eq('approved', true)
   if (error) throw error
   return (data ?? []) as StoredCredential[]
 }
@@ -25,7 +39,7 @@ export async function getCredentialById(
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('webauthn_credentials')
-    .select('id, credential_id, public_key, counter, transports, device_label')
+    .select(CREDENTIAL_COLUMNS)
     .eq('credential_id', credentialId)
     .maybeSingle()
   if (error) throw error
@@ -56,13 +70,3 @@ export async function updateCredentialCounter(
   if (error) throw error
 }
 
-export async function isRegistrationOpen(): Promise<boolean> {
-  const supabase = createAdminClient()
-  const { data, error } = await supabase
-    .from('app_settings')
-    .select('registration_open')
-    .eq('id', 1)
-    .maybeSingle()
-  if (error) throw error
-  return Boolean((data as { registration_open?: boolean } | null)?.registration_open)
-}

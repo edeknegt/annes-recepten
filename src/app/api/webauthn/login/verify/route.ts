@@ -7,6 +7,7 @@ import {
   CHALLENGE_COOKIE,
   ENROLLED_COOKIE,
   ENROLLED_MAX_AGE,
+  PENDING_COOKIE,
   getWebAuthnConfig,
 } from '@/lib/webauthn/config'
 import {
@@ -28,6 +29,12 @@ export async function POST(request: Request) {
   const credential = await getCredentialById(body.response.id)
   if (!credential) {
     return Response.json({ error: 'Onbekende passkey' }, { status: 404 })
+  }
+  if (!credential.approved) {
+    return Response.json(
+      { error: 'Apparaat nog niet goedgekeurd', pending: true },
+      { status: 403 }
+    )
   }
 
   const { rpID, origin } = getWebAuthnConfig()
@@ -66,6 +73,7 @@ export async function POST(request: Request) {
   )
 
   store.delete(CHALLENGE_COOKIE)
+  store.delete(PENDING_COOKIE)
   await setPinSession()
   store.set(ENROLLED_COOKIE, '1', {
     httpOnly: false,

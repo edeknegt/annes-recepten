@@ -5,16 +5,9 @@ import {
   CHALLENGE_MAX_AGE,
   getWebAuthnConfig,
 } from '@/lib/webauthn/config'
-import { getAllCredentials, isRegistrationOpen } from '@/lib/webauthn/store'
+import { getAllCredentials } from '@/lib/webauthn/store'
 
 export async function POST() {
-  if (!(await isRegistrationOpen())) {
-    return Response.json(
-      { error: 'Registratie staat nu dicht. Vraag Erik om hem te openen.' },
-      { status: 403 }
-    )
-  }
-
   const { rpID, rpName } = getWebAuthnConfig()
   const existing = await getAllCredentials()
 

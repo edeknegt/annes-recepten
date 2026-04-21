@@ -5,20 +5,23 @@ import {
   CHALLENGE_MAX_AGE,
   getWebAuthnConfig,
 } from '@/lib/webauthn/config'
-import { getAllCredentials } from '@/lib/webauthn/store'
+import { getApprovedCredentials } from '@/lib/webauthn/store'
 
 export async function POST() {
   const { rpID } = getWebAuthnConfig()
-  const existing = await getAllCredentials()
+  const approved = await getApprovedCredentials()
 
-  if (existing.length === 0) {
-    return Response.json({ error: 'Geen passkeys geregistreerd' }, { status: 404 })
+  if (approved.length === 0) {
+    return Response.json(
+      { error: 'Nog geen goedgekeurde passkeys' },
+      { status: 404 }
+    )
   }
 
   const options = await generateAuthenticationOptions({
     rpID,
     userVerification: 'preferred',
-    allowCredentials: existing.map(c => ({
+    allowCredentials: approved.map(c => ({
       id: c.credential_id,
       transports: (c.transports ?? undefined) as
         | ('internal' | 'hybrid' | 'usb' | 'nfc' | 'ble' | 'cable' | 'smart-card')[]

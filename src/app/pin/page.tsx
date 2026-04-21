@@ -2,24 +2,33 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ScanFace, AlertCircle, KeyRound } from 'lucide-react'
+import { ScanFace, AlertCircle, KeyRound, Hourglass } from 'lucide-react'
 import {
   startAuthentication,
   startRegistration,
 } from '@simplewebauthn/browser'
 
 type Stage = 'login' | 'working'
+type Mode = 'unknown' | 'fresh' | 'pending' | 'enrolled'
 
-function hasEnrolledCookie() {
+function readCookie(name: string): boolean {
   if (typeof document === 'undefined') return false
-  return document.cookie.split('; ').some(c => c.startsWith('webauthn-enrolled=1'))
+  return document.cookie.split('; ').some(c => c.startsWith(`${name}=1`))
+}
+
+function detectMode(): Mode {
+  const enrolled = readCookie('webauthn-enrolled')
+  const pending = readCookie('webauthn-pending')
+  if (enrolled && pending) return 'pending'
+  if (enrolled) return 'enrolled'
+  return 'fresh'
 }
 
 export default function PinPage() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [stage, setStage] = useState<Stage>('login')
-  const [hasPasskey, setHasPasskey] = useState<boolean | null>(null)
+  const [mode, setMode] = useState<Mode>('unknown')
   const [busy, setBusy] = useState(false)
 
   const goHome = useCallback(() => {
@@ -46,6 +55,12 @@ export default function PinPage() {
       })
       if (!verifyRes.ok) {
         const j = await verifyRes.json().catch(() => ({}))
+        if (verifyRes.status === 403 && j?.pending) {
+          setMode('pending')
+          setError(null)
+          setBusy(false)
+          return
+        }
         throw new Error(j.error ?? 'Verificatie mislukt')
       }
       setStage('working')
@@ -80,8 +95,9 @@ export default function PinPage() {
         const j = await verifyRes.json().catch(() => ({}))
         throw new Error(j.error ?? 'Registratie mislukt')
       }
-      setStage('working')
-      goHome()
+      setMode('pending')
+      setError(null)
+      setBusy(false)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Registratie mislukt'
       if (!/cancel|abort|NotAllowed/i.test(msg)) {
@@ -89,12 +105,12 @@ export default function PinPage() {
       }
       setBusy(false)
     }
-  }, [busy, goHome])
+  }, [busy])
 
   useEffect(() => {
-    const enrolled = hasEnrolledCookie()
-    setHasPasskey(enrolled)
-    if (enrolled) handleFaceIdLogin()
+    const m = detectMode()
+    setMode(m)
+    if (m === 'enrolled') handleFaceIdLogin()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -125,7 +141,7 @@ export default function PinPage() {
       <h1 className="text-2xl font-bold text-gray-900">Recepten</h1>
       <p className="text-sm text-gray-500 mt-1 mb-8">Hoi Anne!</p>
 
-      {hasPasskey === true && (
+      {mode === 'enrolled' && (
         <button
           type="button"
           onClick={handleFaceIdLogin}
@@ -144,7 +160,7 @@ export default function PinPage() {
         </button>
       )}
 
-      {hasPasskey === false && (
+      {mode === 'fresh' && (
         <button
           type="button"
           onClick={handleRegister}
@@ -155,6 +171,27 @@ export default function PinPage() {
           <KeyRound className="w-4 h-4" strokeWidth={2} />
           {busy ? 'Bezig…' : 'Registreer passkey'}
         </button>
+      )}
+
+      {mode === 'pending' && (
+        <div className="flex flex-col items-center max-w-xs text-center">
+          <Hourglass className="w-10 h-10 text-honey-800 mb-3" strokeWidth={1.25} />
+          <p className="text-sm text-gray-700 font-medium">
+            Dit apparaat is aangemeld.
+          </p>
+          <p className="text-sm text-gray-500 mt-1">
+            Erik moet 'm nog goedkeuren voor je kan inloggen.
+          </p>
+          <button
+            type="button"
+            onClick={handleFaceIdLogin}
+            disabled={busy}
+            style={{ touchAction: 'manipulation' }}
+            className="mt-6 inline-flex items-center gap-2 px-4 h-10 rounded-xl bg-white text-gray-800 text-sm font-semibold border border-honey-200 shadow-sm hover:bg-honey-50 active:bg-honey-100 disabled:opacity-50"
+          >
+            {busy ? 'Bezig…' : 'Probeer opnieuw'}
+          </button>
+        </div>
       )}
 
       <div className="h-8 mt-4 flex items-center">
