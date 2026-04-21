@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { ChevronDown, Plus, Pencil, Trash2, Tags } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { revalidateCategoryCache } from './actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
@@ -149,6 +150,7 @@ export default function CategoriesPage() {
     }
 
     await Promise.all(promises)
+    await revalidateCategoryCache()
     setSaving(false)
     setEditModal({ open: false })
     fetchData()
@@ -180,6 +182,7 @@ export default function CategoriesPage() {
     await supabase
       .from('categories')
       .insert({ name: addName.trim(), slug, sort_order: maxOrder + 1 })
+    await revalidateCategoryCache()
     setSaving(false)
     setAddModal(false)
     setAddName('')
@@ -192,6 +195,7 @@ export default function CategoriesPage() {
     setSaving(true)
     const table = deleteModal.type === 'category' ? 'categories' : 'subcategories'
     await supabase.from(table).delete().eq('id', deleteModal.id)
+    await revalidateCategoryCache()
     setSaving(false)
     setDeleteModal({ open: false })
     if (deleteModal.type === 'category') {

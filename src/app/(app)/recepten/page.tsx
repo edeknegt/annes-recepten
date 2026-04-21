@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import { BookOpen } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { getCategories, getSubcategories } from '@/lib/cached-queries'
 import { RecipeFilters } from '@/components/recipe-filters'
 import { RecipeGrid } from '@/components/recipe-grid'
 import type { Category, Recipe } from '@/lib/types'
@@ -20,10 +21,10 @@ export default async function RecipesPage({ searchParams }: PageProps) {
   const params = await searchParams
   const supabase = await createClient()
 
-  // Fetch categories, subcategories, and total recipe count
-  const [{ data: categories }, { data: subcategories }, { count: totalCount }] = await Promise.all([
-    supabase.from('categories').select('*').order('sort_order'),
-    supabase.from('subcategories').select('*').order('sort_order'),
+  // Fetch categories, subcategories (gecached), and total recipe count
+  const [categories, subcategories, { count: totalCount }] = await Promise.all([
+    getCategories(),
+    getSubcategories(),
     supabase.from('recipes').select('*', { count: 'exact', head: true }),
   ])
 

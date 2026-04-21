@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Clock, Pencil, ExternalLink } from 'lucide-react'
@@ -11,9 +12,106 @@ import { DeleteRecipeButton } from '@/components/delete-recipe-button'
 import { ShareRecipeButton } from '@/components/share-recipe-button'
 import { ServingsProvider } from '@/components/servings-context'
 import { RecentRecipesTracker } from '@/components/recent-recipes-tracker'
+import type { Ingredient, Step } from '@/lib/types'
 
 interface PageProps {
   params: Promise<{ id: string }>
+}
+
+type Subcategory = { id: string; name: string }
+
+async function fetchSubcategories(id: string): Promise<Subcategory[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('recipe_subcategories')
+    .select('subcategory:subcategories(id, name)')
+    .eq('recipe_id', id)
+  return (
+    (data
+      ?.map(r => r.subcategory as unknown as Subcategory)
+      .filter(Boolean) as Subcategory[]) ?? []
+  )
+}
+
+async function fetchIngredients(id: string): Promise<Ingredient[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('recipe_ingredients')
+    .select('*')
+    .eq('recipe_id', id)
+    .order('sort_order')
+  return (data ?? []) as Ingredient[]
+}
+
+async function fetchSteps(id: string): Promise<Step[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('recipe_steps')
+    .select('*')
+    .eq('recipe_id', id)
+    .order('step_number')
+  return (data ?? []) as Step[]
+}
+
+async function SubcategoryBadges({ id }: { id: string }) {
+  const subcategories = await fetchSubcategories(id)
+  return (
+    <>
+      {subcategories.map(sub => (
+        <Badge key={sub.id} variant="warning">{sub.name}</Badge>
+      ))}
+    </>
+  )
+}
+
+async function IngredientsSection({ id }: { id: string }) {
+  const ingredients = await fetchIngredients(id)
+  return <ServingAdjuster ingredients={ingredients} />
+}
+
+async function StepsList({ id }: { id: string }) {
+  const steps = await fetchSteps(id)
+  return (
+    <ol className="space-y-4">
+      {steps.map(step => (
+        <li key={step.id} className="flex gap-3">
+          <span className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-honey-100 text-honey-800 text-sm font-semibold">
+            {step.step_number}
+          </span>
+          <p className="text-gray-700 pt-0.5">{step.description}</p>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+async function ShareButtonLoader({
+  id,
+  recipe,
+}: {
+  id: string
+  recipe: {
+    title: string
+    prep_time: number | null
+    servings: number
+    source: string | null
+    source_url: string | null
+    category?: { name: string } | null
+  }
+}) {
+  const [ingredients, steps, subcategories] = await Promise.all([
+    fetchIngredients(id),
+    fetchSteps(id),
+    fetchSubcategories(id),
+  ])
+  return (
+    <ShareRecipeButton
+      recipe={recipe}
+      ingredients={ingredients}
+      steps={steps}
+      subcategories={subcategories}
+    />
+  )
 }
 
 export default async function RecipeDetailPage({ params }: PageProps) {
@@ -22,29 +120,11 @@ export default async function RecipeDetailPage({ params }: PageProps) {
 
   const { data: recipe } = await supabase
     .from('recipes')
-    .select(`
-      *,
-      category:categories(*),
-      recipe_subcategories(
-        subcategory:subcategories(*)
-      ),
-      ingredients:recipe_ingredients(*),
-      steps:recipe_steps(*)
-    `)
+    .select('*, category:categories(*)')
     .eq('id', id)
-    .order('sort_order', { referencedTable: 'recipe_ingredients' })
-    .order('step_number', { referencedTable: 'recipe_steps' })
     .single()
 
   if (!recipe) notFound()
-
-  const subcategories = recipe.recipe_subcategories?.map(
-    (rs: { subcategory: { id: string; name: string } }) => rs.subcategory
-  ) || []
-
-  const ingredients = recipe.ingredients || []
-  const steps = recipe.steps || []
-
 
   return (
     <ServingsProvider originalServings={recipe.servings}>
@@ -68,9 +148,9 @@ export default async function RecipeDetailPage({ params }: PageProps) {
             {/* Badges */}
             <div className="flex flex-wrap gap-2 mt-3">
               {recipe.category && <Badge>{recipe.category.name}</Badge>}
-              {subcategories.map((sub: { id: string; name: string }) => (
-                <Badge key={sub.id} variant="warning">{sub.name}</Badge>
-              ))}
+              <Suspense fallback={null}>
+                <SubcategoryBadges id={id} />
+              </Suspense>
             </div>
           </div>
 
@@ -83,12 +163,15 @@ export default async function RecipeDetailPage({ params }: PageProps) {
               </Button>
             </Link>
             <DeleteRecipeButton recipeId={id} />
-            <ShareRecipeButton
-              recipe={recipe}
-              ingredients={ingredients}
-              steps={steps}
-              subcategories={subcategories}
-            />
+            <Suspense
+              fallback={
+                <Button variant="outline" size="sm" disabled>
+                  Delen
+                </Button>
+              }
+            >
+              <ShareButtonLoader id={id} recipe={recipe} />
+            </Suspense>
           </div>
         </div>
       </div>
@@ -113,9 +196,9 @@ export default async function RecipeDetailPage({ params }: PageProps) {
           <Card>
             <CardContent className="py-5">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Ingredi&euml;nten</h2>
-              <ServingAdjuster
-                ingredients={ingredients}
-              />
+              <Suspense fallback={<p className="text-sm text-gray-400">Laden&hellip;</p>}>
+                <IngredientsSection id={id} />
+              </Suspense>
             </CardContent>
           </Card>
         </div>
@@ -124,16 +207,9 @@ export default async function RecipeDetailPage({ params }: PageProps) {
         <Card className="lg:col-span-3">
           <CardContent className="py-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Bereiding</h2>
-            <ol className="space-y-4">
-              {steps.map((step: { id: string; step_number: number; description: string }) => (
-                <li key={step.id} className="flex gap-3">
-                  <span className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-honey-100 text-honey-800 text-sm font-semibold">
-                    {step.step_number}
-                  </span>
-                  <p className="text-gray-700 pt-0.5">{step.description}</p>
-                </li>
-              ))}
-            </ol>
+            <Suspense fallback={<p className="text-sm text-gray-400">Laden&hellip;</p>}>
+              <StepsList id={id} />
+            </Suspense>
           </CardContent>
         </Card>
       </div>

@@ -1,14 +1,12 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { getCategories, getSubcategories } from '@/lib/cached-queries'
 import { RecipeForm } from '@/components/recipe-form'
 
 export default async function NewRecipePage() {
-  const supabase = await createClient()
-
-  const [{ data: categories }, { data: subcategories }] = await Promise.all([
-    supabase.from('categories').select('*').order('sort_order'),
-    supabase.from('subcategories').select('*').order('sort_order'),
+  const [categories, subcategories] = await Promise.all([
+    getCategories(),
+    getSubcategories(),
   ])
 
   return (
@@ -24,8 +22,8 @@ export default async function NewRecipePage() {
         <h1 className="page-title">Nieuw recept</h1>
       </div>
       <RecipeForm
-        categories={categories || []}
-        subcategories={subcategories || []}
+        categories={categories}
+        subcategories={subcategories}
       />
     </div>
   )

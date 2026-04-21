@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { getCategories, getSubcategories } from '@/lib/cached-queries'
 import { RecipeForm } from '@/components/recipe-form'
 
 interface PageProps {
@@ -14,8 +15,8 @@ export default async function EditRecipePage({ params }: PageProps) {
 
   const [
     { data: recipe },
-    { data: categories },
-    { data: subcategories },
+    categories,
+    subcategories,
   ] = await Promise.all([
     supabase
       .from('recipes')
@@ -29,8 +30,8 @@ export default async function EditRecipePage({ params }: PageProps) {
       .order('sort_order', { referencedTable: 'recipe_ingredients' })
       .order('step_number', { referencedTable: 'recipe_steps' })
       .single(),
-    supabase.from('categories').select('*').order('sort_order'),
-    supabase.from('subcategories').select('*').order('sort_order'),
+    getCategories(),
+    getSubcategories(),
   ])
 
   if (!recipe) notFound()
@@ -48,8 +49,8 @@ export default async function EditRecipePage({ params }: PageProps) {
         <h1 className="page-title">Recept bewerken</h1>
       </div>
       <RecipeForm
-        categories={categories || []}
-        subcategories={subcategories || []}
+        categories={categories}
+        subcategories={subcategories}
         recipe={recipe}
       />
     </div>
