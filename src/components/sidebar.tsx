@@ -52,16 +52,20 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={cn(
-                  'flex flex-col items-center justify-center gap-0.5 flex-1 mx-0.5 rounded-full transition-colors py-1.5',
-                  active ? 'bg-honey-500 text-honey-950' : 'text-gray-500'
-                )}
+                className="flex flex-col items-center justify-center gap-0.5 flex-1 py-1"
               >
-                <Icon className="h-4.5 w-4.5" />
+                <span
+                  className={cn(
+                    'flex items-center justify-center w-8 h-8 rounded-full transition-colors',
+                    active ? 'bg-honey-200 text-honey-800' : 'text-gray-500'
+                  )}
+                >
+                  <Icon className="h-4.5 w-4.5" />
+                </span>
                 <span
                   className={cn(
                     'text-[10px] leading-none',
-                    active ? 'font-semibold' : 'font-medium'
+                    active ? 'font-bold text-honey-800' : 'font-medium text-gray-500'
                   )}
                 >
                   {item.label}
@@ -73,10 +77,12 @@ export function Sidebar() {
           <button
             onPointerDown={handleLogout}
             disabled={loggingOut}
-            className="flex flex-col items-center justify-center gap-0.5 flex-1 mx-0.5 rounded-full py-1.5 text-gray-500"
+            className="flex flex-col items-center justify-center gap-0.5 flex-1 py-1"
           >
-            {loggingOut ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <LogOut className="h-4.5 w-4.5" />}
-            <span className="text-[10px] leading-none font-medium">Uitloggen</span>
+            <span className="flex items-center justify-center w-8 h-8 rounded-full text-gray-500">
+              {loggingOut ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <LogOut className="h-4.5 w-4.5" />}
+            </span>
+            <span className="text-[10px] leading-none font-medium text-gray-500">Uitloggen</span>
           </button>
         </div>
       </nav>
