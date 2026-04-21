@@ -2,16 +2,25 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ScanFace, AlertCircle } from 'lucide-react'
-import { startAuthentication } from '@simplewebauthn/browser'
+import { ScanFace, AlertCircle, KeyRound } from 'lucide-react'
+import {
+  startAuthentication,
+  startRegistration,
+} from '@simplewebauthn/browser'
 
 type Stage = 'login' | 'working'
+
+function hasEnrolledCookie() {
+  if (typeof document === 'undefined') return false
+  return document.cookie.split('; ').some(c => c.startsWith('webauthn-enrolled=1'))
+}
 
 export default function PinPage() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [stage, setStage] = useState<Stage>('login')
-  const [faceIdBusy, setFaceIdBusy] = useState(false)
+  const [hasPasskey, setHasPasskey] = useState<boolean | null>(null)
+  const [busy, setBusy] = useState(false)
 
   const goHome = useCallback(() => {
     router.replace('/')
@@ -19,8 +28,8 @@ export default function PinPage() {
   }, [router])
 
   const handleFaceIdLogin = useCallback(async () => {
-    if (faceIdBusy) return
-    setFaceIdBusy(true)
+    if (busy) return
+    setBusy(true)
     setError(null)
     try {
       const optsRes = await fetch('/api/webauthn/login/options', { method: 'POST' })
@@ -46,12 +55,46 @@ export default function PinPage() {
       if (!/cancel|abort|NotAllowed/i.test(msg)) {
         setError(msg)
       }
-      setFaceIdBusy(false)
+      setBusy(false)
     }
-  }, [faceIdBusy, goHome])
+  }, [busy, goHome])
+
+  const handleRegister = useCallback(async () => {
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      const optsRes = await fetch('/api/webauthn/register/options', { method: 'POST' })
+      if (!optsRes.ok) {
+        const j = await optsRes.json().catch(() => ({}))
+        throw new Error(j.error ?? 'Kon passkey niet registreren')
+      }
+      const options = await optsRes.json()
+      const attestation = await startRegistration({ optionsJSON: options })
+      const verifyRes = await fetch('/api/webauthn/register/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ response: attestation, deviceLabel: navigator.platform }),
+      })
+      if (!verifyRes.ok) {
+        const j = await verifyRes.json().catch(() => ({}))
+        throw new Error(j.error ?? 'Registratie mislukt')
+      }
+      setStage('working')
+      goHome()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Registratie mislukt'
+      if (!/cancel|abort|NotAllowed/i.test(msg)) {
+        setError(msg)
+      }
+      setBusy(false)
+    }
+  }, [busy, goHome])
 
   useEffect(() => {
-    handleFaceIdLogin()
+    const enrolled = hasEnrolledCookie()
+    setHasPasskey(enrolled)
+    if (enrolled) handleFaceIdLogin()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -82,22 +125,37 @@ export default function PinPage() {
       <h1 className="text-2xl font-bold text-gray-900">Recepten</h1>
       <p className="text-sm text-gray-500 mt-1 mb-8">Hoi Anne!</p>
 
-      <button
-        type="button"
-        onClick={handleFaceIdLogin}
-        disabled={faceIdBusy}
-        aria-label="Ontgrendel met Face ID"
-        style={{ touchAction: 'manipulation' }}
-        className="flex flex-col items-center gap-4 p-6 -m-6 rounded-full disabled:opacity-50"
-      >
-        <ScanFace
-          className={`w-14 h-14 text-honey-800 ${faceIdBusy ? 'animate-pulse' : 'breathe'}`}
-          strokeWidth={1.25}
-        />
-        <span className="text-xs uppercase tracking-[0.18em] text-gray-500">
-          {faceIdBusy ? 'Bezig' : 'Face ID'}
-        </span>
-      </button>
+      {hasPasskey === true && (
+        <button
+          type="button"
+          onClick={handleFaceIdLogin}
+          disabled={busy}
+          aria-label="Ontgrendel met Face ID"
+          style={{ touchAction: 'manipulation' }}
+          className="flex flex-col items-center gap-4 p-6 -m-6 rounded-full disabled:opacity-50"
+        >
+          <ScanFace
+            className={`w-14 h-14 text-honey-800 ${busy ? 'animate-pulse' : 'breathe'}`}
+            strokeWidth={1.25}
+          />
+          <span className="text-xs uppercase tracking-[0.18em] text-gray-500">
+            {busy ? 'Bezig' : 'Face ID'}
+          </span>
+        </button>
+      )}
+
+      {hasPasskey === false && (
+        <button
+          type="button"
+          onClick={handleRegister}
+          disabled={busy}
+          style={{ touchAction: 'manipulation' }}
+          className="inline-flex items-center gap-2 px-5 h-12 rounded-xl bg-honey-500 text-honey-950 font-bold shadow-md ring-1 ring-honey-600/30 hover:bg-honey-400 active:bg-honey-600 disabled:opacity-50"
+        >
+          <KeyRound className="w-4 h-4" strokeWidth={2} />
+          {busy ? 'Bezig…' : 'Registreer passkey'}
+        </button>
+      )}
 
       <div className="h-8 mt-4 flex items-center">
         {error && (

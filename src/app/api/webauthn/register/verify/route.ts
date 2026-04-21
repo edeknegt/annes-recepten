@@ -2,18 +2,21 @@ import { cookies } from 'next/headers'
 import { verifyRegistrationResponse } from '@simplewebauthn/server'
 import { isoBase64URL } from '@simplewebauthn/server/helpers'
 import type { RegistrationResponseJSON } from '@simplewebauthn/server'
-import { hasValidPinSession } from '@/lib/webauthn/auth'
+import { setPinSession } from '@/lib/webauthn/auth'
 import {
   CHALLENGE_COOKIE,
   ENROLLED_COOKIE,
   ENROLLED_MAX_AGE,
   getWebAuthnConfig,
 } from '@/lib/webauthn/config'
-import { insertCredential } from '@/lib/webauthn/store'
+import { insertCredential, isRegistrationOpen } from '@/lib/webauthn/store'
 
 export async function POST(request: Request) {
-  if (!(await hasValidPinSession())) {
-    return Response.json({ error: 'Niet ingelogd' }, { status: 401 })
+  if (!(await isRegistrationOpen())) {
+    return Response.json(
+      { error: 'Registratie staat nu dicht.' },
+      { status: 403 }
+    )
   }
 
   const store = await cookies()
@@ -67,6 +70,7 @@ export async function POST(request: Request) {
     maxAge: ENROLLED_MAX_AGE,
     path: '/',
   })
+  await setPinSession()
 
   return Response.json({ ok: true })
 }

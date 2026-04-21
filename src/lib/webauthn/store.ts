@@ -55,3 +55,14 @@ export async function updateCredentialCounter(
     .eq('credential_id', credentialId)
   if (error) throw error
 }
+
+export async function isRegistrationOpen(): Promise<boolean> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('registration_open')
+    .eq('id', 1)
+    .maybeSingle()
+  if (error) throw error
+  return Boolean((data as { registration_open?: boolean } | null)?.registration_open)
+}
