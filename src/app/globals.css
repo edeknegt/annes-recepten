@@ -109,6 +109,15 @@ button, a, [role="button"] {
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
+/* Soft breathing animation for passive affordances */
+@keyframes breathe {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.04); }
+}
+.breathe {
+  animation: breathe 2.4s ease-in-out infinite;
+}
+
 /* Safe area for iPhone home indicator */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
