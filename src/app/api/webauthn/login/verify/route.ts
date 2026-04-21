@@ -5,8 +5,6 @@ import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
 import { setPinSession } from '@/lib/webauthn/auth'
 import {
   CHALLENGE_COOKIE,
-  ENROLLED_COOKIE,
-  ENROLLED_MAX_AGE,
   PENDING_COOKIE,
   getWebAuthnConfig,
 } from '@/lib/webauthn/config'
@@ -75,13 +73,6 @@ export async function POST(request: Request) {
   store.delete(CHALLENGE_COOKIE)
   store.delete(PENDING_COOKIE)
   await setPinSession()
-  store.set(ENROLLED_COOKIE, '1', {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: ENROLLED_MAX_AGE,
-    path: '/',
-  })
 
   return Response.json({ ok: true })
 }

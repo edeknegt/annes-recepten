@@ -4,8 +4,6 @@ import { isoBase64URL } from '@simplewebauthn/server/helpers'
 import type { RegistrationResponseJSON } from '@simplewebauthn/server'
 import {
   CHALLENGE_COOKIE,
-  ENROLLED_COOKIE,
-  ENROLLED_MAX_AGE,
   PENDING_COOKIE,
   PENDING_MAX_AGE,
   getWebAuthnConfig,
@@ -57,13 +55,6 @@ export async function POST(request: Request) {
   })
 
   store.delete(CHALLENGE_COOKIE)
-  store.set(ENROLLED_COOKIE, '1', {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: ENROLLED_MAX_AGE,
-    path: '/',
-  })
   store.set(PENDING_COOKIE, '1', {
     httpOnly: false,
     secure: process.env.NODE_ENV === 'production',

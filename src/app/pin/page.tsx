@@ -8,27 +8,18 @@ import {
   startRegistration,
 } from '@simplewebauthn/browser'
 
-type Stage = 'login' | 'working'
-type Mode = 'unknown' | 'fresh' | 'pending' | 'enrolled'
+type Stage = 'loading' | 'login' | 'pending' | 'working'
 
-function readCookie(name: string): boolean {
+function hasPendingCookie() {
   if (typeof document === 'undefined') return false
-  return document.cookie.split('; ').some(c => c.startsWith(`${name}=1`))
-}
-
-function detectMode(): Mode {
-  const enrolled = readCookie('webauthn-enrolled')
-  const pending = readCookie('webauthn-pending')
-  if (enrolled && pending) return 'pending'
-  if (enrolled) return 'enrolled'
-  return 'fresh'
+  return document.cookie.split('; ').some(c => c.startsWith('webauthn-pending=1'))
 }
 
 export default function PinPage() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
-  const [stage, setStage] = useState<Stage>('login')
-  const [mode, setMode] = useState<Mode>('unknown')
+  const [stage, setStage] = useState<Stage>('loading')
+  const [hasApproved, setHasApproved] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const goHome = useCallback(() => {
@@ -56,8 +47,7 @@ export default function PinPage() {
       if (!verifyRes.ok) {
         const j = await verifyRes.json().catch(() => ({}))
         if (verifyRes.status === 403 && j?.pending) {
-          setMode('pending')
-          setError(null)
+          setStage('pending')
           setBusy(false)
           return
         }
@@ -95,8 +85,7 @@ export default function PinPage() {
         const j = await verifyRes.json().catch(() => ({}))
         throw new Error(j.error ?? 'Registratie mislukt')
       }
-      setMode('pending')
-      setError(null)
+      setStage('pending')
       setBusy(false)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Registratie mislukt'
@@ -108,13 +97,27 @@ export default function PinPage() {
   }, [busy])
 
   useEffect(() => {
-    const m = detectMode()
-    setMode(m)
-    if (m === 'enrolled') handleFaceIdLogin()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let cancelled = false
+    async function init() {
+      if (hasPendingCookie()) {
+        if (!cancelled) setStage('pending')
+        return
+      }
+      try {
+        const res = await fetch('/api/webauthn/status')
+        const data = await res.json()
+        if (cancelled) return
+        setHasApproved(Boolean(data?.hasApproved))
+        setStage('login')
+      } catch {
+        if (!cancelled) setStage('login')
+      }
+    }
+    init()
+    return () => { cancelled = true }
   }, [])
 
-  if (stage === 'working') {
+  if (stage === 'loading' || stage === 'working') {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-honey-100 p-4">
         <div className="flex flex-col items-center">
@@ -141,39 +144,7 @@ export default function PinPage() {
       <h1 className="text-2xl font-bold text-gray-900">Recepten</h1>
       <p className="text-sm text-gray-500 mt-1 mb-8">Hoi Anne!</p>
 
-      {mode === 'enrolled' && (
-        <button
-          type="button"
-          onClick={handleFaceIdLogin}
-          disabled={busy}
-          aria-label="Ontgrendel met Face ID"
-          style={{ touchAction: 'manipulation' }}
-          className="flex flex-col items-center gap-4 p-6 -m-6 rounded-full disabled:opacity-50"
-        >
-          <ScanFace
-            className={`w-14 h-14 text-honey-800 ${busy ? 'animate-pulse' : 'breathe'}`}
-            strokeWidth={1.25}
-          />
-          <span className="text-xs uppercase tracking-[0.18em] text-gray-500">
-            {busy ? 'Bezig' : 'Face ID'}
-          </span>
-        </button>
-      )}
-
-      {mode === 'fresh' && (
-        <button
-          type="button"
-          onClick={handleRegister}
-          disabled={busy}
-          style={{ touchAction: 'manipulation' }}
-          className="inline-flex items-center gap-2 px-5 h-12 rounded-xl bg-honey-500 text-honey-950 font-bold shadow-md ring-1 ring-honey-600/30 hover:bg-honey-400 active:bg-honey-600 disabled:opacity-50"
-        >
-          <KeyRound className="w-4 h-4" strokeWidth={2} />
-          {busy ? 'Bezig…' : 'Registreer passkey'}
-        </button>
-      )}
-
-      {mode === 'pending' && (
+      {stage === 'pending' && (
         <div className="flex flex-col items-center max-w-xs text-center">
           <Hourglass className="w-10 h-10 text-honey-800 mb-3" strokeWidth={1.25} />
           <p className="text-sm text-gray-700 font-medium">
@@ -192,6 +163,48 @@ export default function PinPage() {
             {busy ? 'Bezig…' : 'Probeer opnieuw'}
           </button>
         </div>
+      )}
+
+      {stage === 'login' && hasApproved && (
+        <>
+          <button
+            type="button"
+            onClick={handleFaceIdLogin}
+            disabled={busy}
+            aria-label="Ontgrendel met Face ID"
+            style={{ touchAction: 'manipulation' }}
+            className="flex flex-col items-center gap-4 p-6 -m-6 rounded-full disabled:opacity-50"
+          >
+            <ScanFace
+              className={`w-14 h-14 text-honey-800 ${busy ? 'animate-pulse' : 'breathe'}`}
+              strokeWidth={1.25}
+            />
+            <span className="text-xs uppercase tracking-[0.18em] text-gray-500">
+              {busy ? 'Bezig' : 'Face ID'}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={handleRegister}
+            disabled={busy}
+            className="mt-10 text-xs text-gray-500 underline underline-offset-4 hover:text-gray-700 disabled:opacity-50"
+          >
+            Nieuw apparaat? Registreer hier
+          </button>
+        </>
+      )}
+
+      {stage === 'login' && !hasApproved && (
+        <button
+          type="button"
+          onClick={handleRegister}
+          disabled={busy}
+          style={{ touchAction: 'manipulation' }}
+          className="inline-flex items-center gap-2 px-5 h-12 rounded-xl bg-honey-500 text-honey-950 font-bold shadow-md ring-1 ring-honey-600/30 hover:bg-honey-400 active:bg-honey-600 disabled:opacity-50"
+        >
+          <KeyRound className="w-4 h-4" strokeWidth={2} />
+          {busy ? 'Bezig…' : 'Registreer passkey'}
+        </button>
       )}
 
       <div className="h-8 mt-4 flex items-center">
