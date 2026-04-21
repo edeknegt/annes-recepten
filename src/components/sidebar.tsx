@@ -33,9 +33,18 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile bottom navigation bar */}
-      <nav className="mobile-nav lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 safe-area-bottom">
-        <div className="flex items-center justify-around h-12">
+      {/* Mobile: fade achter en onder de pill — geeft content 'doorzichtig'-effect */}
+      <div
+        aria-hidden
+        className="lg:hidden fixed left-0 right-0 bottom-0 z-30 pointer-events-none h-28 bg-gradient-to-t from-honey-100/80 via-honey-100/40 to-transparent"
+      />
+
+      {/* Mobile bottom navigation bar (floating pill, WhatsApp-style) */}
+      <nav
+        className="mobile-nav lg:hidden fixed left-3 right-3 z-40 rounded-full bg-white/85 backdrop-blur-md border border-white/60 shadow-lg shadow-black/10"
+        style={{ bottom: 'max(env(safe-area-inset-bottom, 0px), 0.5rem)' }}
+      >
+        <div className="flex items-stretch justify-around h-14 px-1">
           {navItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.href)
@@ -44,15 +53,19 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex flex-col items-center justify-center gap-0.5 px-3 py-0.5 rounded-full',
-                  active ? 'text-honey-800 bg-honey-200' : 'text-gray-400'
+                  'flex flex-col items-center justify-center gap-0.5 flex-1 mx-0.5 rounded-full transition-colors py-1.5',
+                  active ? 'bg-honey-500 text-honey-950' : 'text-gray-500'
                 )}
               >
                 <Icon className="h-4.5 w-4.5" />
-                <span className={cn(
-                  'text-[10px] leading-tight',
-                  active ? 'font-bold' : 'font-medium'
-                )}>{item.label}</span>
+                <span
+                  className={cn(
+                    'text-[10px] leading-none',
+                    active ? 'font-semibold' : 'font-medium'
+                  )}
+                >
+                  {item.label}
+                </span>
               </Link>
             )
           })}
@@ -60,10 +73,10 @@ export function Sidebar() {
           <button
             onPointerDown={handleLogout}
             disabled={loggingOut}
-            className="flex flex-col items-center justify-center gap-0.5 min-w-[4rem] text-gray-400"
+            className="flex flex-col items-center justify-center gap-0.5 flex-1 mx-0.5 rounded-full py-1.5 text-gray-500"
           >
             {loggingOut ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <LogOut className="h-4.5 w-4.5" />}
-            <span className="text-[10px] leading-tight font-medium">Uitloggen</span>
+            <span className="text-[10px] leading-none font-medium">Uitloggen</span>
           </button>
         </div>
       </nav>

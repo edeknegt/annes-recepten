@@ -8,7 +8,7 @@ import { formatPrepTime } from '@/lib/utils'
 import type { Recipe, Category } from '@/lib/types'
 
 const RECENT_KEY = 'recent-recipes'
-const RECENT_LIMIT = 6
+const RECENT_LIMIT = 4
 const TOP_CATEGORIES = 4
 
 function readRecentIds(): string[] {
@@ -85,12 +85,12 @@ export default function Home() {
   }, [])
 
   return (
-    <div className="max-w-5xl mx-auto pt-12 sm:pt-16 lg:pt-20">
+    <div className="max-w-5xl mx-auto pt-8 sm:pt-12 lg:pt-16">
       <h1 className="page-title mb-1">Hoi Anne!</h1>
-      <p className="text-sm text-gray-500 mb-14">Wat ga je vandaag maken?</p>
+      <p className="text-sm text-gray-500 mb-10">Wat ga je vandaag maken?</p>
 
       {recentRecipes.length > 0 && (
-        <section className="mb-10">
+        <section className="mb-8">
           <h2 className="section-title mb-3">Laatst bekeken</h2>
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {recentRecipes.map(recipe => (

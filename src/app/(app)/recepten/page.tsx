@@ -1,10 +1,9 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { Clock, Users, BookOpen } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { RecipeFilters } from '@/components/recipe-filters'
-import { Badge } from '@/components/ui/badge'
-import { formatPrepTime } from '@/lib/utils'
+import { RecipeGrid } from '@/components/recipe-grid'
 import type { Category, Recipe } from '@/lib/types'
 
 interface PageProps {
@@ -121,43 +120,7 @@ export default async function RecipesPage({ searchParams }: PageProps) {
       </div>
 
       {/* Recipe grid */}
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {recipes?.map((recipe: Recipe) => (
-          <Link
-            key={recipe.id}
-            href={`/recepten/${recipe.id}`}
-            className="group bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-honey-200 transition-all overflow-hidden"
-          >
-            {/* Colored top bar */}
-            <div className="h-1.5 bg-honey-400 group-hover:bg-honey-500 transition-colors" />
-
-            <div className="p-5">
-              <h3 className="font-semibold text-gray-900 group-hover:text-honey-700 transition-colors mb-2 line-clamp-2">
-                {recipe.title}
-              </h3>
-
-              <div className="flex items-center gap-3 text-sm text-gray-500">
-                {recipe.prep_time && (
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    {formatPrepTime(recipe.prep_time)}
-                  </span>
-                )}
-                <span className="flex items-center gap-1">
-                  <Users className="h-4 w-4" />
-                  {recipe.servings}
-                </span>
-              </div>
-
-              {recipe.category && (
-                <div className="mt-3">
-                  <Badge>{recipe.category.name}</Badge>
-                </div>
-              )}
-            </div>
-          </Link>
-        ))}
-      </div>
+      {recipes && recipes.length > 0 && <RecipeGrid recipes={recipes as Recipe[]} />}
 
       {/* Empty state */}
       {(!recipes || recipes.length === 0) && (

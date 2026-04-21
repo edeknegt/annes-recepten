@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 
 const RECENT_KEY = 'recent-recipes'
-const RECENT_LIMIT = 6
+const RECENT_LIMIT = 4
 
 export function RecentRecipesTracker({ recipeId }: { recipeId: string }) {
   useEffect(() => {
