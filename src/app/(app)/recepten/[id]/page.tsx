@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { DeleteRecipeButton } from '@/components/delete-recipe-button'
 import { ShareRecipeButton } from '@/components/share-recipe-button'
 import { ServingsProvider } from '@/components/servings-context'
+import { RecentRecipesTracker } from '@/components/recent-recipes-tracker'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -47,6 +48,7 @@ export default async function RecipeDetailPage({ params }: PageProps) {
 
   return (
     <ServingsProvider originalServings={recipe.servings}>
+    <RecentRecipesTracker recipeId={recipe.id} />
     <div className="max-w-3xl mx-auto">
       <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 bg-honey-100">
         {/* Back link */}

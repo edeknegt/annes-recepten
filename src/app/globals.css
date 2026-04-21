@@ -118,9 +118,11 @@ button, a, [role="button"] {
   animation: breathe 2.4s ease-in-out infinite;
 }
 
-/* Safe area for iPhone home indicator */
+/* Safe area for iPhone home indicator.
+   Gebruiken de helft van de inset zodat de nav dichter bij de onderrand zit
+   maar de home-indicator niet overlapt. */
 .safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) * 0.5), 4px);
 }
 
 /* Hide mobile nav when a bottom sheet is open */
