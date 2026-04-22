@@ -85,12 +85,10 @@ function generateHtml(
   html { box-sizing: border-box; }
   *, *:before, *:after { box-sizing: inherit; }
   body { font-family: 'Raleway', -apple-system, system-ui, sans-serif; background: #FFFBE6; color: #1a1a1a; padding: 24px 16px; max-width: 640px; margin: 0 auto; line-height: 1.5; }
-  .header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-  .header img { width: 44px; height: 44px; border-radius: 10px; border: 2px solid #FFEC99; object-fit: cover; }
-  .header .brand { display: flex; flex-direction: column; line-height: 1.2; }
-  .header .brand-name { font-size: 0.95rem; font-weight: 700; color: #1a1a1a; }
-  .header .brand-sub { font-size: 0.75rem; color: #9ca3af; margin-top: 1px; }
-  h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; line-height: 1.2; }
+  .title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+  .title-row h1 { flex: 1; }
+  .logo { flex-shrink: 0; width: 44px; height: 44px; border-radius: 10px; border: 2px solid #FFEC99; object-fit: cover; }
+  h1 { font-size: 1.75rem; font-weight: 700; line-height: 1.2; margin: 0; }
   .meta { display: flex; gap: 16px; color: #6b7280; font-size: 0.875rem; margin-bottom: 20px; }
   .meta span { display: inline-flex; align-items: center; gap: 6px; }
   .meta svg { color: #9ca3af; }
@@ -111,14 +109,10 @@ function generateHtml(
 </style>
 </head>
 <body>
-<div class="header">
-  ${logoDataUrl ? `<img src="${logoDataUrl}" alt="">` : ''}
-  <div class="brand">
-    <span class="brand-name">Recepten</span>
-    <span class="brand-sub">van Anne</span>
-  </div>
+<div class="title-row">
+  <h1>${recipe.title}</h1>
+  ${logoDataUrl ? `<img src="${logoDataUrl}" alt="" class="logo">` : ''}
 </div>
-<h1>${recipe.title}</h1>
 <div class="meta">
   ${recipe.prep_time ? `<span>${CLOCK_SVG}${formatPrepTime(recipe.prep_time)}</span>` : ''}
   <span>${USER_SVG}${servings} ${servings === 1 ? 'persoon' : 'personen'}</span>
