@@ -185,7 +185,7 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
         )}
 
         {/* Content */}
-        <div data-sheet-content className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 safe-area-bottom">
+        <div data-sheet-content className="flex-1 overflow-y-auto overscroll-contain px-5 pt-4 pb-8 safe-area-bottom">
           {children}
         </div>
       </div>

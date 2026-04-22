@@ -109,6 +109,12 @@ button, a, [role="button"] {
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
+/* Verberg de nav-fade als er een bottom-sheet open is — anders
+   schemert de gradient door de onderkant van de sheet heen. */
+body[data-sheet-open] .nav-fade {
+  display: none;
+}
+
 /* Soft breathing animation for passive affordances */
 @keyframes breathe {
   0%, 100% { opacity: 0.55; transform: scale(1); }

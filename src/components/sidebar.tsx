@@ -33,15 +33,16 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile: fade achter en onder de pill — geeft content 'doorzichtig'-effect */}
+      {/* Mobile: fade achter en onder de pill — geeft content 'doorzichtig'-effect.
+          Wordt verborgen als er een bottom-sheet open staat (zie globals.css). */}
       <div
         aria-hidden
-        className="lg:hidden fixed left-0 right-0 bottom-0 z-30 pointer-events-none h-28 bg-gradient-to-t from-honey-100/80 via-honey-100/40 to-transparent"
+        className="nav-fade lg:hidden fixed left-0 right-0 bottom-0 z-30 pointer-events-none h-28 bg-gradient-to-t from-honey-100/80 via-honey-100/40 to-transparent"
       />
 
       {/* Mobile bottom navigation bar (floating pill, WhatsApp-style) */}
       <nav
-        className="mobile-nav lg:hidden fixed left-3 right-3 z-40 rounded-full bg-white/85 backdrop-blur-md border border-white/60 shadow-lg shadow-black/10"
+        className="mobile-nav lg:hidden fixed left-3 right-3 z-40 rounded-full bg-white/85 backdrop-blur-md border border-gray-200 shadow-lg shadow-honey-900/20"
         style={{ bottom: 'max(env(safe-area-inset-bottom, 0px), 0.5rem)' }}
       >
         <div className="flex items-stretch justify-around h-14 px-1">
