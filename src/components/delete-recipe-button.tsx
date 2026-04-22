@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Trash2, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
+import { revalidateRecipesCache } from '@/app/(app)/recepten/actions'
 
 export function DeleteRecipeButton({ recipeId }: { recipeId: string }) {
   const [showConfirm, setShowConfirm] = useState(false)
@@ -33,6 +34,7 @@ export function DeleteRecipeButton({ recipeId }: { recipeId: string }) {
     startTransition(async () => {
       const supabase = createClient()
       await supabase.from('recipes').delete().eq('id', recipeId)
+      await revalidateRecipesCache()
       router.push('/recepten')
       router.refresh()
     })

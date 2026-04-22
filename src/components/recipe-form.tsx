@@ -4,6 +4,7 @@ import React, { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, AlertCircle, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { revalidateRecipesCache } from '@/app/(app)/recepten/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -222,6 +223,8 @@ export function RecipeForm({ categories, subcategories, recipe }: RecipeFormProp
             )
           : Promise.resolve(),
       ])
+
+      await revalidateRecipesCache()
 
       router.push(`/recepten/${recipeId}`)
       router.refresh()

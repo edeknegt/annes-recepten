@@ -5,7 +5,14 @@ import Link from 'next/link'
 import { Clock, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { formatPrepTime } from '@/lib/utils'
-import type { Recipe } from '@/lib/types'
+
+export type RecipeCardItem = {
+  id: string
+  title: string
+  prep_time: number | null
+  servings: number
+  category: { name: string } | null
+}
 
 const RECENT_KEY = 'recent-recipes'
 
@@ -21,8 +28,8 @@ function readRecentIds(): string[] {
   }
 }
 
-export function RecipeGrid({ recipes }: { recipes: Recipe[] }) {
-  const [ordered, setOrdered] = useState<Recipe[]>(recipes)
+export function RecipeGrid({ recipes }: { recipes: RecipeCardItem[] }) {
+  const [ordered, setOrdered] = useState<RecipeCardItem[]>(recipes)
 
   useEffect(() => {
     const recentIds = readRecentIds()

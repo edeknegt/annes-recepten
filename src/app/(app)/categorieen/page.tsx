@@ -1,7 +1,25 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { ChevronDown, Plus, Pencil, Trash2, Tags } from 'lucide-react'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { ChevronDown, Plus, Pencil, X, Check } from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { createClient } from '@/lib/supabase/client'
 import { revalidateCategoryCache } from './actions'
 import { Button } from '@/components/ui/button'
@@ -19,20 +37,209 @@ function slugify(text: string): string {
     .trim()
 }
 
-export default function CategoriesPage() {
+// ─────────────────────────────────────────────────────────────────────────────
+// Sortable subcategory row
+// ─────────────────────────────────────────────────────────────────────────────
+interface SortableSubProps {
+  sub: Subcategory
+  isEditing: boolean
+  editingName: string
+  setEditingName: (v: string) => void
+  onStartEdit: (sub: Subcategory) => void
+  onSaveEdit: (id: string) => void
+  onCancelEdit: () => void
+  onDelete: (sub: Subcategory) => void
+}
+
+function SortableSubRow({
+  sub,
+  isEditing,
+  editingName,
+  setEditingName,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onDelete,
+}: SortableSubProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: sub.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto' as const,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        'flex items-center gap-1 pl-10 pr-1 border-t border-gray-100 bg-gray-50/60 touch-none cursor-grab active:cursor-grabbing',
+        isDragging && 'bg-white shadow-lg ring-1 ring-honey-300'
+      )}
+    >
+      {isEditing ? (
+        <input
+          autoFocus
+          value={editingName}
+          onChange={e => setEditingName(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') onSaveEdit(sub.id)
+            if (e.key === 'Escape') onCancelEdit()
+          }}
+          onBlur={() => onSaveEdit(sub.id)}
+          className="flex-1 bg-transparent text-[14px] text-gray-800 outline-none py-2.5"
+        />
+      ) : (
+        <span className="flex-1 text-[14px] text-gray-700 py-2.5 truncate">
+          {sub.name}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={() => onStartEdit(sub)}
+        className="flex items-center justify-center p-3 text-gray-400 hover:text-gray-700"
+        title="Hernoemen"
+      >
+        <Pencil className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onDelete(sub)}
+        className="flex items-center justify-center p-3 text-gray-400 hover:text-red-500"
+        title="Verwijderen"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sortable category row + expanded content
+// ─────────────────────────────────────────────────────────────────────────────
+interface SortableCategoryProps {
+  cat: Category
+  subs: Subcategory[]
+  count: number
+  isOpen: boolean
+  onToggle: (id: string) => void
+  isEditing: boolean
+  editingName: string
+  setEditingName: (v: string) => void
+  onStartEdit: (cat: Category) => void
+  onSaveEdit: (id: string) => void
+  onCancelEdit: () => void
+  onDelete: (cat: Category) => void
+  children: React.ReactNode
+}
+
+function SortableCategoryRow({
+  cat,
+  count,
+  isOpen,
+  onToggle,
+  isEditing,
+  editingName,
+  setEditingName,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onDelete,
+  children,
+}: SortableCategoryProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: cat.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto' as const,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'border-t border-gray-100 first:border-t-0 bg-white',
+        isDragging && 'shadow-lg ring-1 ring-honey-300 z-50'
+      )}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="flex items-center hover:bg-gray-50 transition-colors touch-none cursor-grab active:cursor-grabbing"
+      >
+        <button
+          onClick={() => onToggle(cat.id)}
+          className="flex-1 flex items-center gap-2 pl-4 py-2 text-left min-w-0"
+          aria-expanded={isOpen}
+        >
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 text-gray-400 shrink-0 transition-transform duration-200',
+              isOpen ? 'rotate-0' : '-rotate-90'
+            )}
+          />
+          {isEditing ? (
+            <input
+              autoFocus
+              value={editingName}
+              onChange={e => setEditingName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') onSaveEdit(cat.id)
+                if (e.key === 'Escape') onCancelEdit()
+              }}
+              onBlur={() => onSaveEdit(cat.id)}
+              onClick={e => e.stopPropagation()}
+              className="flex-1 bg-transparent text-[15px] text-gray-900 outline-none"
+            />
+          ) : (
+            <span className="flex flex-col min-w-0">
+              <span className="text-[15px] text-gray-900 truncate">{cat.name}</span>
+              <span className="text-[11px] text-gray-400 mt-0.5">
+                {count} {count === 1 ? 'recept' : 'recepten'}
+              </span>
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => onStartEdit(cat)}
+          className="flex items-center justify-center p-3 text-gray-400 hover:text-gray-700"
+          title="Hernoemen"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(cat)}
+          className="flex items-center justify-center p-3 mr-1 text-gray-400 hover:text-red-500"
+          title="Verwijderen"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      {isOpen && children}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main page
+// ─────────────────────────────────────────────────────────────────────────────
+export default function InstellingenPage() {
   const supabase = createClient()
   const [categories, setCategories] = useState<Category[]>([])
   const [subcategories, setSubcategories] = useState<Subcategory[]>([])
   const [recipeCounts, setRecipeCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
 
-  // Accordion state
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set())
-
-  // Edit modal state
-  const [editModal, setEditModal] = useState<{ open: boolean; category?: Category }>({ open: false })
-  const [editName, setEditName] = useState('')
-  const [editSubs, setEditSubs] = useState<{ id?: string; name: string }[]>([])
 
   // Add category modal
   const [addModal, setAddModal] = useState(false)
@@ -46,7 +253,24 @@ export default function CategoriesPage() {
     name?: string
   }>({ open: false })
 
+  // Inline rename state
+  const [editingCatId, setEditingCatId] = useState<string | null>(null)
+  const [editingCatName, setEditingCatName] = useState('')
+  const [editingSubId, setEditingSubId] = useState<string | null>(null)
+  const [editingSubName, setEditingSubName] = useState('')
+
+  // Inline subcategory add
+  const [addingSubForCat, setAddingSubForCat] = useState<string | null>(null)
+  const [newSubName, setNewSubName] = useState('')
+  const addSubInputRef = useRef<HTMLInputElement>(null)
+
   const [saving, setSaving] = useState(false)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   const fetchData = useCallback(async () => {
     const [{ data: cats }, { data: subs }, { data: recipes }] = await Promise.all([
@@ -72,106 +296,17 @@ export default function CategoriesPage() {
   }, [fetchData])
 
   const toggleCategory = (id: string) => {
-    setOpenCategories((prev) => {
+    setOpenCategories(prev => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
+    setEditingSubId(null)
+    setAddingSubForCat(null)
   }
 
-  // --- Open edit modal for a category ---
-  const openEditModal = (cat: Category) => {
-    const subs = (subcategoriesByCategoryId[cat.id] || [])
-      .map(s => ({ id: s.id, name: s.name }))
-    setEditName(cat.name)
-    setEditSubs(subs)
-    setEditModal({ open: true, category: cat })
-  }
-
-  // --- Save everything in the edit modal ---
-  const saveEditModal = async () => {
-    if (!editName.trim() || !editModal.category) return
-    setSaving(true)
-
-    const cat = editModal.category
-    const slug = slugify(editName)
-
-    // Update category name
-    await supabase
-      .from('categories')
-      .update({ name: editName.trim(), slug })
-      .eq('id', cat.id)
-
-    // Get existing subcategories for this category
-    const existingSubs = subcategoriesByCategoryId[cat.id] || []
-    const existingIds = existingSubs.map(s => s.id)
-
-    // Determine which subs to update, insert, or delete
-    const editSubIds = editSubs.filter(s => s.id).map(s => s.id!)
-    const toDelete = existingIds.filter(id => !editSubIds.includes(id))
-    const toUpdate = editSubs.filter(s => s.id && s.name.trim())
-    const toInsert = editSubs.filter(s => !s.id && s.name.trim())
-
-    const promises: PromiseLike<unknown>[] = []
-
-    // Delete removed subcategories
-    if (toDelete.length > 0) {
-      promises.push(
-        supabase.from('subcategories').delete().in('id', toDelete)
-      )
-    }
-
-    // Update existing subcategories
-    for (const sub of toUpdate) {
-      promises.push(
-        supabase
-          .from('subcategories')
-          .update({ name: sub.name.trim(), slug: slugify(sub.name) })
-          .eq('id', sub.id!)
-      )
-    }
-
-    // Insert new subcategories
-    if (toInsert.length > 0) {
-      const maxOrder = existingSubs.length > 0
-        ? Math.max(...existingSubs.map(s => s.sort_order))
-        : -1
-      promises.push(
-        supabase.from('subcategories').insert(
-          toInsert.map((s, i) => ({
-            name: s.name.trim(),
-            slug: slugify(s.name),
-            category_id: cat.id,
-            sort_order: maxOrder + 1 + i,
-          }))
-        )
-      )
-    }
-
-    await Promise.all(promises)
-    await revalidateCategoryCache()
-    setSaving(false)
-    setEditModal({ open: false })
-    fetchData()
-  }
-
-  // --- Subcategory helpers within edit modal ---
-  const updateSubName = (index: number, name: string) => {
-    const updated = [...editSubs]
-    updated[index] = { ...updated[index], name }
-    setEditSubs(updated)
-  }
-
-  const removeSub = (index: number) => {
-    setEditSubs(editSubs.filter((_, i) => i !== index))
-  }
-
-  const addSub = () => {
-    setEditSubs([...editSubs, { name: '' }])
-  }
-
-  // --- Add new category ---
+  // --- Add category ---
   const saveNewCategory = async () => {
     if (!addName.trim()) return
     setSaving(true)
@@ -189,6 +324,33 @@ export default function CategoriesPage() {
     fetchData()
   }
 
+  // --- Rename category inline ---
+  const startEditCategory = (cat: Category) => {
+    setEditingCatId(cat.id)
+    setEditingCatName(cat.name)
+  }
+
+  const saveEditCategory = async (id: string) => {
+    const name = editingCatName.trim()
+    if (!name) {
+      setEditingCatId(null)
+      return
+    }
+    // No change? skip roundtrip
+    const existing = categories.find(c => c.id === id)
+    if (existing && existing.name === name) {
+      setEditingCatId(null)
+      return
+    }
+    await supabase
+      .from('categories')
+      .update({ name, slug: slugify(name) })
+      .eq('id', id)
+    await revalidateCategoryCache()
+    setEditingCatId(null)
+    fetchData()
+  }
+
   // --- Delete ---
   const confirmDelete = async () => {
     if (!deleteModal.id) return
@@ -199,7 +361,7 @@ export default function CategoriesPage() {
     setSaving(false)
     setDeleteModal({ open: false })
     if (deleteModal.type === 'category') {
-      setOpenCategories((prev) => {
+      setOpenCategories(prev => {
         const next = new Set(prev)
         next.delete(deleteModal.id!)
         return next
@@ -208,11 +370,109 @@ export default function CategoriesPage() {
     fetchData()
   }
 
-  // Pre-index subcategories by category_id to avoid repeated filtering during render
-  const subcategoriesByCategoryId = subcategories.reduce<Record<string, Subcategory[]>>((acc, sub) => {
-    (acc[sub.category_id] ||= []).push(sub)
-    return acc
-  }, {})
+  // --- Subcategory inline add ---
+  const startAddSub = (categoryId: string) => {
+    setAddingSubForCat(categoryId)
+    setNewSubName('')
+    setTimeout(() => addSubInputRef.current?.focus(), 0)
+  }
+
+  const saveNewSub = async (categoryId: string) => {
+    const name = newSubName.trim()
+    if (!name) {
+      setAddingSubForCat(null)
+      return
+    }
+    const subs = subcategoriesByCategoryId[categoryId] || []
+    const maxOrder = subs.length > 0 ? Math.max(...subs.map(s => s.sort_order)) : -1
+    await supabase.from('subcategories').insert({
+      name,
+      slug: slugify(name),
+      category_id: categoryId,
+      sort_order: maxOrder + 1,
+    })
+    await revalidateCategoryCache()
+    setAddingSubForCat(null)
+    setNewSubName('')
+    fetchData()
+  }
+
+  // --- Subcategory inline rename ---
+  const startEditSub = (sub: Subcategory) => {
+    setEditingSubId(sub.id)
+    setEditingSubName(sub.name)
+  }
+
+  const saveEditSub = async (subId: string) => {
+    const name = editingSubName.trim()
+    if (!name) {
+      setEditingSubId(null)
+      return
+    }
+    const existing = subcategories.find(s => s.id === subId)
+    if (existing && existing.name === name) {
+      setEditingSubId(null)
+      return
+    }
+    await supabase
+      .from('subcategories')
+      .update({ name, slug: slugify(name) })
+      .eq('id', subId)
+    await revalidateCategoryCache()
+    setEditingSubId(null)
+    fetchData()
+  }
+
+  // --- Drag reorder ---
+  const persistOrder = async (
+    table: 'categories' | 'subcategories',
+    ordered: { id: string }[]
+  ) => {
+    await Promise.all(
+      ordered.map((item, i) =>
+        supabase.from(table).update({ sort_order: i }).eq('id', item.id)
+      )
+    )
+    await revalidateCategoryCache()
+  }
+
+  const handleCategoryDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = categories.findIndex(c => c.id === active.id)
+    const newIndex = categories.findIndex(c => c.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+    const reordered = arrayMove(categories, oldIndex, newIndex).map((c, i) => ({
+      ...c,
+      sort_order: i,
+    }))
+    setCategories(reordered)
+    persistOrder('categories', reordered)
+  }
+
+  const handleSubDragEnd = (categoryId: string) => async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const subs = subcategoriesByCategoryId[categoryId] || []
+    const oldIndex = subs.findIndex(s => s.id === active.id)
+    const newIndex = subs.findIndex(s => s.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+    const reordered = arrayMove(subs, oldIndex, newIndex).map((s, i) => ({
+      ...s,
+      sort_order: i,
+    }))
+    const otherSubs = subcategories.filter(s => s.category_id !== categoryId)
+    setSubcategories([...otherSubs, ...reordered])
+    persistOrder('subcategories', reordered)
+  }
+
+  const subcategoriesByCategoryId = subcategories.reduce<Record<string, Subcategory[]>>(
+    (acc, sub) => {
+      (acc[sub.category_id] ||= []).push(sub)
+      return acc
+    },
+    {}
+  )
 
   if (loading) {
     return (
@@ -230,122 +490,154 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-2xl mx-auto">
       <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 bg-honey-100">
-        <h1 className="page-title">Categorie&euml;n</h1>
+        <h1 className="page-title">Instellingen</h1>
       </div>
 
-      {categories.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-honey-100 mb-4">
-            <Tags className="h-8 w-8 text-honey-600" />
+      <section className="mt-2">
+        <div className="flex items-center justify-between px-1 mb-2">
+          <h2 className="text-xs uppercase tracking-wider text-gray-500 font-semibold">
+            Categorie&euml;n
+          </h2>
+          {categories.length > 0 && (
+            <button
+              onClick={() => { setAddName(''); setAddModal(true) }}
+              className="inline-flex items-center gap-1 text-sm text-honey-700 hover:text-honey-800 font-medium"
+            >
+              <Plus className="h-4 w-4" />
+              Nieuwe categorie
+            </button>
+          )}
+        </div>
+
+        {categories.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-200 px-4 py-10 text-center">
+            <p className="text-sm text-gray-500 mb-4">
+              Nog geen categorie&euml;n.
+            </p>
+            <Button onClick={() => { setAddName(''); setAddModal(true) }}>
+              <Plus className="h-4 w-4 mr-1" />
+              Eerste categorie toevoegen
+            </Button>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">Geen categorie&euml;n</h3>
-          <p className="text-gray-500 mb-4">Voeg je eerste categorie toe.</p>
-          <Button onClick={() => { setAddName(''); setAddModal(true) }}>
-            <Plus className="h-4 w-4 mr-1" />
-            Categorie toevoegen
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {categories.map((cat) => {
-            const subs = subcategoriesByCategoryId[cat.id] || []
-            const isOpen = openCategories.has(cat.id)
-            const count = recipeCounts[cat.id] || 0
-
-            return (
-              <div
-                key={cat.id}
-                className={cn(
-                  'bg-white rounded-xl shadow-sm border transition-colors',
-                  isOpen ? 'border-honey-300 ring-1 ring-honey-200' : 'border-gray-100'
-                )}
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleCategoryDragEnd}
+            >
+              <SortableContext
+                items={categories.map(c => c.id)}
+                strategy={verticalListSortingStrategy}
               >
-                {/* Category Header */}
-                <div className="flex items-center gap-2 px-4 py-3 sm:px-5">
-                  <button
-                    onClick={() => toggleCategory(cat.id)}
-                    className="flex items-center gap-2 flex-1 min-w-0 text-left"
-                    aria-expanded={isOpen}
-                  >
-                    <ChevronDown
-                      className={cn(
-                        'h-4 w-4 text-gray-400 shrink-0 transition-transform duration-200',
-                        isOpen ? 'rotate-0' : '-rotate-90'
-                      )}
-                    />
-                    <span className="text-base font-semibold text-gray-900 truncate">
-                      {cat.name}
-                      <span className="ml-1.5 text-sm font-normal text-gray-400">
-                        ({count} {count === 1 ? 'recept' : 'recepten'})
-                      </span>
-                    </span>
-                  </button>
+                {categories.map(cat => {
+                  const subs = subcategoriesByCategoryId[cat.id] || []
+                  const isOpen = openCategories.has(cat.id)
+                  const count = recipeCounts[cat.id] || 0
 
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        openEditModal(cat)
-                      }}
-                      className="p-2 rounded-lg text-gray-400 hover:text-honey-700 hover:bg-honey-50 transition-colors"
-                      title="Bewerken"
+                  return (
+                    <SortableCategoryRow
+                      key={cat.id}
+                      cat={cat}
+                      subs={subs}
+                      count={count}
+                      isOpen={isOpen}
+                      onToggle={toggleCategory}
+                      isEditing={editingCatId === cat.id}
+                      editingName={editingCatName}
+                      setEditingName={setEditingCatName}
+                      onStartEdit={startEditCategory}
+                      onSaveEdit={saveEditCategory}
+                      onCancelEdit={() => setEditingCatId(null)}
+                      onDelete={c =>
+                        setDeleteModal({
+                          open: true,
+                          type: 'category',
+                          id: c.id,
+                          name: c.name,
+                        })
+                      }
                     >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setDeleteModal({ open: true, type: 'category', id: cat.id, name: cat.name })
-                      }}
-                      className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                      title="Verwijderen"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Subcategories — collapsible */}
-                <div
-                  className={cn(
-                    'overflow-hidden transition-all duration-200',
-                    isOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
-                  )}
-                >
-                  <div className="px-4 pb-4 pt-1 sm:px-5 sm:pb-5">
-                    <div className="flex flex-wrap gap-2">
-                      {subs.length === 0 && (
-                        <span className="text-sm text-gray-400 italic">
-                          Geen subcategorie&euml;n
-                        </span>
-                      )}
-                      {subs.map((sub) => (
-                        <span
-                          key={sub.id}
-                          className="inline-flex items-center rounded-full bg-honey-50 px-3 py-1.5 text-sm font-medium text-honey-700"
+                      <div className="bg-gray-50/60">
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleSubDragEnd(cat.id)}
                         >
-                          {sub.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+                          <SortableContext
+                            items={subs.map(s => s.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            {subs.map(sub => (
+                              <SortableSubRow
+                                key={sub.id}
+                                sub={sub}
+                                isEditing={editingSubId === sub.id}
+                                editingName={editingSubName}
+                                setEditingName={setEditingSubName}
+                                onStartEdit={startEditSub}
+                                onSaveEdit={saveEditSub}
+                                onCancelEdit={() => setEditingSubId(null)}
+                                onDelete={s =>
+                                  setDeleteModal({
+                                    open: true,
+                                    type: 'subcategory',
+                                    id: s.id,
+                                    name: s.name,
+                                  })
+                                }
+                              />
+                            ))}
+                          </SortableContext>
+                        </DndContext>
 
-      {/* Add category button — below the list */}
-      <button
-        onClick={() => { setAddName(''); setAddModal(true) }}
-        className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-honey-300 text-honey-700 font-medium hover:bg-honey-50 hover:border-honey-400 transition-colors"
-      >
-        <Plus className="h-5 w-5" />
-        Categorie toevoegen
-      </button>
+                        {/* Toevoegen / inline-invoer-rij */}
+                        <div className="flex items-center gap-1 pl-10 pr-3 py-2 border-t border-gray-100">
+                          {addingSubForCat === cat.id ? (
+                            <>
+                              <input
+                                ref={addSubInputRef}
+                                value={newSubName}
+                                onChange={e => setNewSubName(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') saveNewSub(cat.id)
+                                  if (e.key === 'Escape') setAddingSubForCat(null)
+                                }}
+                                onBlur={() => saveNewSub(cat.id)}
+                                placeholder="Naam subcategorie"
+                                className="flex-1 bg-transparent text-[14px] text-gray-800 placeholder-gray-400 outline-none"
+                              />
+                              <button
+                                type="button"
+                                onPointerDown={e => e.preventDefault()}
+                                onClick={() => saveNewSub(cat.id)}
+                                className="p-2 rounded-md text-honey-700 hover:text-honey-800 hover:bg-honey-50"
+                              >
+                                <Check className="h-4 w-4" />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => startAddSub(cat.id)}
+                              className="flex-1 flex items-center gap-1.5 text-[14px] text-honey-700 hover:text-honey-800 text-left py-2"
+                            >
+                              <Plus className="h-4 w-4" />
+                              Subcategorie toevoegen
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </SortableCategoryRow>
+                  )
+                })}
+              </SortableContext>
+            </DndContext>
+          </div>
+        )}
+      </section>
 
       {/* Add Category Modal */}
       <Modal
@@ -373,86 +665,35 @@ export default function CategoriesPage() {
         </div>
       </Modal>
 
-      {/* Edit Category Modal — edit name + all subcategories */}
-      <Modal
-        open={editModal.open}
-        onClose={() => setEditModal({ open: false })}
-        title="Categorie bewerken"
-      >
-        <div className="space-y-5">
-          {/* Category name */}
-          <Input
-            label="Categorienaam"
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            placeholder="bijv. Hoofdmaaltijden"
-            autoFocus
-          />
-
-          {/* Subcategories */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Subcategorie&euml;n
-            </label>
-            <div className="space-y-2">
-              {editSubs.map((sub, index) => (
-                <div key={sub.id || `new-${index}`} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={sub.name}
-                    onChange={(e) => updateSubName(index, e.target.value)}
-                    placeholder="Subcategorie naam..."
-                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-honey-500 focus:border-honey-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeSub(index)}
-                    className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={addSub}
-              className="mt-2 inline-flex items-center gap-1 text-sm text-honey-700 hover:text-honey-800 font-medium"
-            >
-              <Plus className="h-4 w-4" />
-              Subcategorie toevoegen
-            </button>
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-            <Button variant="outline" onClick={() => setEditModal({ open: false })}>
-              Annuleren
-            </Button>
-            <Button onClick={saveEditModal} loading={saving} disabled={!editName.trim()}>
-              Opslaan
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
       {/* Delete Confirmation Modal */}
       <Modal
         open={deleteModal.open}
         onClose={() => setDeleteModal({ open: false })}
-        title={`${deleteModal.type === 'category' ? 'Categorie' : 'Subcategorie'} verwijderen`}
+        title={
+          deleteModal.type === 'category'
+            ? 'Categorie verwijderen'
+            : 'Subcategorie verwijderen'
+        }
       >
-        <p className="text-gray-600 mb-6">
-          Weet je zeker dat je <strong>{deleteModal.name}</strong> wilt verwijderen?
-          {deleteModal.type === 'category' && ' Alle bijbehorende subcategorie\u00EBn worden ook verwijderd.'}
-        </p>
-        <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={() => setDeleteModal({ open: false })}>
-            Annuleren
-          </Button>
-          <Button variant="danger" onClick={confirmDelete} loading={saving}>
-            Verwijderen
-          </Button>
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Weet je zeker dat je <span className="font-semibold">{deleteModal.name}</span> wil verwijderen?
+            {deleteModal.type === 'category' && deleteModal.id && recipeCounts[deleteModal.id] > 0 && (
+              <> Er {recipeCounts[deleteModal.id] === 1 ? 'is' : 'zijn'} {recipeCounts[deleteModal.id]} {recipeCounts[deleteModal.id] === 1 ? 'recept' : 'recepten'} gekoppeld aan deze categorie.</>
+            )}
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setDeleteModal({ open: false })}>
+              Annuleren
+            </Button>
+            <Button
+              variant="danger"
+              onClick={confirmDelete}
+              loading={saving}
+            >
+              Verwijderen
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

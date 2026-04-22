@@ -2,10 +2,14 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import { BookOpen } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { getCategories, getSubcategories } from '@/lib/cached-queries'
+import {
+  getCategories,
+  getSubcategories,
+  getRecipeCards,
+  type RecipeCard,
+} from '@/lib/cached-queries'
 import { RecipeFilters } from '@/components/recipe-filters'
 import { RecipeGrid } from '@/components/recipe-grid'
-import type { Category, Recipe } from '@/lib/types'
 
 interface PageProps {
   searchParams: Promise<{
@@ -19,89 +23,92 @@ interface PageProps {
 
 export default async function RecipesPage({ searchParams }: PageProps) {
   const params = await searchParams
-  const supabase = await createClient()
 
-  // Fetch categories, subcategories (gecached), and total recipe count
-  const [categories, subcategories, { count: totalCount }] = await Promise.all([
+  const [categories, subcategories, allRecipes] = await Promise.all([
     getCategories(),
     getSubcategories(),
-    supabase.from('recipes').select('*', { count: 'exact', head: true }),
+    getRecipeCards(),
   ])
 
-  // Build recipe query
-  let query = supabase
-    .from('recipes')
-    .select('*, category:categories(*)')
-    .order('created_at', { ascending: false })
+  const totalCount = allRecipes.length
+  let recipes: RecipeCard[] = allRecipes
 
-  // Filter by search query
+  // Filter op titel
   if (params.q) {
-    query = query.ilike('title', `%${params.q}%`)
+    const q = params.q.toLowerCase()
+    recipes = recipes.filter(r => r.title.toLowerCase().includes(q))
   }
 
-  // Filter by categories
-  if (params.categorieen && categories) {
-    const slugs = params.categorieen.split(',')
-    const catIds = categories
-      .filter((c: Category) => slugs.includes(c.slug))
-      .map((c: Category) => c.id)
-    if (catIds.length > 0) {
-      query = query.in('category_id', catIds)
+  // Filter op categorieën (meerdere via komma-gescheiden slugs)
+  if (params.categorieen) {
+    const slugs = new Set(params.categorieen.split(','))
+    const catIds = new Set(
+      categories.filter(c => slugs.has(c.slug)).map(c => c.id)
+    )
+    if (catIds.size > 0) {
+      recipes = recipes.filter(r => catIds.has(r.category_id))
     }
   }
 
-  let { data: recipes } = await query
+  // Filter op subcategorieën (recipe_subcategories al in de cache)
+  if (params.subcategorieen) {
+    const slugs = new Set(params.subcategorieen.split(','))
+    const subcatIds = new Set(
+      subcategories.filter(sc => slugs.has(sc.slug)).map(sc => sc.id)
+    )
+    if (subcatIds.size > 0) {
+      recipes = recipes.filter(r =>
+        r.subcategory_ids.some(id => subcatIds.has(id))
+      )
+    }
+  }
 
-  // Filter by prep time (multi-select, post-query for OR logic)
-  if (params.tijd && recipes) {
+  // Filter op bereidingstijd-range (OR over bereiken)
+  if (params.tijd) {
     const ranges = params.tijd.split(',')
     recipes = recipes.filter(r => {
       if (!r.prep_time) return false
       return ranges.some(range => {
-        if (range === '60+') return r.prep_time >= 60
+        if (range === '60+') return r.prep_time! >= 60
         const [min, max] = range.split('-').map(Number)
-        return r.prep_time >= min && r.prep_time <= max
+        return r.prep_time! >= min && r.prep_time! <= max
       })
     })
   }
 
-  // Filter by subcategories (post-query via junction table)
-  if (params.subcategorieen && recipes && subcategories) {
-    const slugs = params.subcategorieen.split(',')
-    const subcatIds = subcategories
-      .filter(sc => slugs.includes(sc.slug))
-      .map(sc => sc.id)
-    if (subcatIds.length > 0) {
-      const { data: junctions } = await supabase
-        .from('recipe_subcategories')
-        .select('recipe_id')
-        .in('subcategory_id', subcatIds)
-      const recipeIds = new Set(junctions?.map(j => j.recipe_id))
-      recipes = recipes.filter(r => recipeIds.has(r.id))
-    }
-  }
-
-  // Filter by ingredient name
-  if (params.ingredienten && recipes) {
-    const terms = params.ingredienten.toLowerCase().split(',').map(t => t.trim()).filter(Boolean)
+  // Filter op ingrediënt-naam (niet gecached — losse query)
+  if (params.ingredienten) {
+    const terms = params.ingredienten
+      .toLowerCase()
+      .split(',')
+      .map(t => t.trim())
+      .filter(Boolean)
     if (terms.length > 0) {
+      const supabase = await createClient()
       const recipeIds = recipes.map(r => r.id)
       const { data: ingredients } = await supabase
         .from('recipe_ingredients')
         .select('recipe_id, name')
         .in('recipe_id', recipeIds)
       if (ingredients) {
-        const matchingRecipeIds = new Set(
+        const matching = new Set(
           ingredients
-            .filter(ing => terms.some(term => ing.name.toLowerCase().includes(term)))
+            .filter(ing =>
+              terms.some(t => ing.name.toLowerCase().includes(t))
+            )
             .map(ing => ing.recipe_id)
         )
-        recipes = recipes.filter(r => matchingRecipeIds.has(r.id))
+        recipes = recipes.filter(r => matching.has(r.id))
       }
     }
   }
 
-  const hasFilters = params.q || params.categorieen || params.subcategorieen || params.tijd || params.ingredienten
+  const hasFilters =
+    params.q ||
+    params.categorieen ||
+    params.subcategorieen ||
+    params.tijd ||
+    params.ingredienten
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -110,21 +117,19 @@ export default async function RecipesPage({ searchParams }: PageProps) {
           <h1 className="page-title">
             Recepten
             {' '}<span className="text-sm font-normal text-gray-400">
-              ({recipes?.length ?? 0} van {totalCount ?? 0})
+              ({recipes.length} van {totalCount})
             </span>
           </h1>
         </div>
 
         <Suspense fallback={<div>Laden...</div>}>
-          <RecipeFilters categories={categories || []} subcategories={subcategories || []} />
+          <RecipeFilters categories={categories} subcategories={subcategories} />
         </Suspense>
       </div>
 
-      {/* Recipe grid */}
-      {recipes && recipes.length > 0 && <RecipeGrid recipes={recipes as Recipe[]} />}
+      {recipes.length > 0 && <RecipeGrid recipes={recipes} />}
 
-      {/* Empty state */}
-      {(!recipes || recipes.length === 0) && (
+      {recipes.length === 0 && (
         <div className="text-center py-16">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-honey-100 mb-4">
             <BookOpen className="h-8 w-8 text-honey-600" />
