@@ -5,6 +5,32 @@ import { Share, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useServings } from '@/components/servings-context'
 
+// Eenvoudige in-memory cache voor het logo, om hetzelfde bestand niet
+// opnieuw te hoeven fetchen bij elke share-klik in dezelfde sessie.
+let cachedLogoDataUrl: string | null = null
+
+async function getLogoDataUrl(): Promise<string | null> {
+  if (cachedLogoDataUrl) return cachedLogoDataUrl
+  try {
+    const res = await fetch('/erik-anne-drinks.png')
+    if (!res.ok) return null
+    const blob = await res.blob()
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+    cachedLogoDataUrl = dataUrl
+    return dataUrl
+  } catch {
+    return null
+  }
+}
+
+const CLOCK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>`
+const USER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>`
+
 interface ShareRecipeProps {
   recipe: {
     title: string
@@ -42,7 +68,12 @@ function formatShareAmount(amount: number | null, ratio: number): string {
   return String(roundAmount(adjusted))
 }
 
-function generateHtml({ recipe, ingredients, steps }: ShareRecipeProps, servings: number, ratio: number): string {
+function generateHtml(
+  { recipe, ingredients, steps }: ShareRecipeProps,
+  servings: number,
+  ratio: number,
+  logoDataUrl: string | null
+): string {
   return `<!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -50,30 +81,47 @@ function generateHtml({ recipe, ingredients, steps }: ShareRecipeProps, servings
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${recipe.title} — Recepten van Anne</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif; background: #FFFBE6; color: #1a1a1a; padding: 24px 16px; max-width: 640px; margin: 0 auto; }
-  h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; }
+  @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap');
+  html { box-sizing: border-box; }
+  *, *:before, *:after { box-sizing: inherit; }
+  body { font-family: 'Raleway', -apple-system, system-ui, sans-serif; background: #FFFBE6; color: #1a1a1a; padding: 24px 16px; max-width: 640px; margin: 0 auto; line-height: 1.5; }
+  .header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .header img { width: 44px; height: 44px; border-radius: 10px; border: 2px solid #FFEC99; object-fit: cover; }
+  .header .brand { display: flex; flex-direction: column; line-height: 1.2; }
+  .header .brand-name { font-size: 0.95rem; font-weight: 700; color: #1a1a1a; }
+  .header .brand-sub { font-size: 0.75rem; color: #9ca3af; margin-top: 1px; }
+  h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; line-height: 1.2; }
   .meta { display: flex; gap: 16px; color: #6b7280; font-size: 0.875rem; margin-bottom: 20px; }
+  .meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .meta svg { color: #9ca3af; }
   .card { background: #fff; border-radius: 12px; border: 1px solid #f3f4f6; padding: 20px; margin-bottom: 16px; }
   h2 { font-size: 1.125rem; font-weight: 600; margin-bottom: 12px; }
-  .ingredients { display: grid; grid-template-columns: auto auto 1fr; gap: 6px 8px; font-size: 0.9375rem; list-style: none; }
+  .ingredients { display: grid; grid-template-columns: 5ch auto 1fr; gap: 6px 8px; font-size: 0.9375rem; list-style: none; padding: 0; margin: 0; }
   .ingredients li { display: contents; }
   .amount { font-weight: 600; text-align: right; }
   .unit { color: #6b7280; }
   .name { hyphens: auto; }
   .step { display: flex; gap: 12px; margin-bottom: 16px; }
+  .step:last-child { margin-bottom: 0; }
   .step-num { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: #FFFBE6; color: #997A10; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; justify-content: center; }
-  .step p { color: #374151; padding-top: 3px; font-size: 0.9375rem; line-height: 1.5; }
+  .step p { color: #374151; padding-top: 3px; font-size: 0.9375rem; margin: 0; }
   .source { margin-top: 20px; font-size: 0.8125rem; color: #9ca3af; }
   .source a { color: #BF9A14; }
-  .footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid #FFF4BF; text-align: center; font-size: 0.75rem; color: #d1d5db; }
+  .footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid #FFF4BF; text-align: center; font-size: 0.75rem; color: #9ca3af; }
 </style>
 </head>
 <body>
+<div class="header">
+  ${logoDataUrl ? `<img src="${logoDataUrl}" alt="">` : ''}
+  <div class="brand">
+    <span class="brand-name">Recepten</span>
+    <span class="brand-sub">van Anne</span>
+  </div>
+</div>
 <h1>${recipe.title}</h1>
 <div class="meta">
-  ${recipe.prep_time ? `<span>⏱ ${formatPrepTime(recipe.prep_time)}</span>` : ''}
-  <span>👤 ${servings} ${servings === 1 ? 'persoon' : 'personen'}</span>
+  ${recipe.prep_time ? `<span>${CLOCK_SVG}${formatPrepTime(recipe.prep_time)}</span>` : ''}
+  <span>${USER_SVG}${servings} ${servings === 1 ? 'persoon' : 'personen'}</span>
 </div>
 
 <div class="card">
@@ -120,7 +168,8 @@ export function ShareRecipeButton(props: ShareRecipeProps) {
   const ratio = servings / originalServings
 
   const handleShare = async () => {
-    const html = generateHtml(props, servings, ratio)
+    const logoDataUrl = await getLogoDataUrl()
+    const html = generateHtml(props, servings, ratio, logoDataUrl)
     const blob = new Blob([html], { type: 'text/html' })
     const fileName = `${props.recipe.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.html`
     const file = new File([blob], fileName, { type: 'text/html' })
