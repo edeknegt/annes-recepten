@@ -5,6 +5,7 @@ import { ArrowLeft, Clock, Pencil, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatPrepTimeLong } from '@/lib/utils'
 import { ServingAdjuster } from '@/components/serving-adjuster'
+import { AddToListButton } from '@/components/add-to-list-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -64,9 +65,28 @@ async function SubcategoryBadges({ id }: { id: string }) {
   )
 }
 
-async function IngredientsSection({ id }: { id: string }) {
+async function IngredientsCardBody({ id }: { id: string }) {
   const ingredients = await fetchIngredients(id)
-  return <ServingAdjuster ingredients={ingredients} />
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-900">Ingredi&euml;nten</h2>
+        <AddToListButton recipeId={id} ingredients={ingredients} />
+      </div>
+      <ServingAdjuster ingredients={ingredients} />
+    </>
+  )
+}
+
+function IngredientsCardFallback() {
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-900">Ingredi&euml;nten</h2>
+      </div>
+      <p className="text-sm text-gray-400">Laden&hellip;</p>
+    </>
+  )
 }
 
 async function StepsList({ id }: { id: string }) {
@@ -195,9 +215,8 @@ export default async function RecipeDetailPage({ params }: PageProps) {
 
           <Card>
             <CardContent className="py-5">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Ingredi&euml;nten</h2>
-              <Suspense fallback={<p className="text-sm text-gray-400">Laden&hellip;</p>}>
-                <IngredientsSection id={id} />
+              <Suspense fallback={<IngredientsCardFallback />}>
+                <IngredientsCardBody id={id} />
               </Suspense>
             </CardContent>
           </Card>

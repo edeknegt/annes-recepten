@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { BookOpen } from 'lucide-react'
+import { BookOpen, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import {
   getCategories,
@@ -128,6 +128,16 @@ export default async function RecipesPage({ searchParams }: PageProps) {
       </div>
 
       {recipes.length > 0 && <RecipeGrid recipes={recipes} />}
+
+      {/* FAB (rechts-onder, op mobiel boven de nav-pill) */}
+      <Link
+        href="/recepten/nieuw"
+        className="fixed z-30 right-4 lg:right-8 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:bottom-8 flex items-center justify-center w-14 h-14 rounded-full bg-honey-500 text-honey-950 shadow-lg shadow-honey-900/30 hover:bg-honey-600 active:scale-95 transition-all touch-manipulation"
+        aria-label="Nieuw recept"
+        title="Nieuw recept"
+      >
+        <Plus className="h-6 w-6" strokeWidth={2.5} />
+      </Link>
 
       {recipes.length === 0 && (
         <div className="text-center py-16">

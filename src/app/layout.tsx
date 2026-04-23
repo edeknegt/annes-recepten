@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Raleway } from "next/font/google";
 import "./globals.css";
+import { RegisterServiceWorker } from "@/components/register-service-worker";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -36,7 +37,10 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        <RegisterServiceWorker />
+        {children}
+      </body>
     </html>
   );
 }

@@ -4,14 +4,14 @@ import { useTransition } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
-import { Home, BookOpen, PlusCircle, Settings, LogOut, Loader2 } from 'lucide-react'
+import { Home, BookOpen, ShoppingCart, Settings, LogOut, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logout } from '@/app/pin/actions'
 
 const navItems = [
   { label: 'Home', href: '/', icon: Home },
   { label: 'Recepten', href: '/recepten', icon: BookOpen },
-  { label: 'Nieuw', href: '/recepten/nieuw', icon: PlusCircle },
+  { label: 'Boodschappen', href: '/lijst', icon: ShoppingCart },
   { label: 'Instellingen', href: '/categorieen', icon: Settings },
 ]
 
@@ -25,9 +25,6 @@ export function Sidebar() {
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/'
-    if (href === '/recepten') {
-      return pathname.startsWith('/recepten') && !pathname.startsWith('/recepten/nieuw')
-    }
     return pathname.startsWith(href)
   }
 
