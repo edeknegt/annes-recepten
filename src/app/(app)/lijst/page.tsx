@@ -12,17 +12,19 @@ import {
   FolderPlus,
   Repeat,
   WifiOff,
-  ArrowRightLeft,
 } from 'lucide-react'
 import {
   DndContext,
-  closestCenter,
+  closestCorners,
   KeyboardSensor,
   PointerSensor,
   TouchSensor,
+  useDroppable,
   useSensor,
   useSensors,
   DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
 } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -61,23 +63,19 @@ import type {
 interface SortableItemProps {
   item: ShoppingItem
   online: boolean
-  canMove: boolean
   onToggle: (item: ShoppingItem) => void
   onDelete: (itemId: string) => void
   onAmountSave: (itemId: string, newText: string | null) => void
   onNameSave: (itemId: string, newName: string) => void
-  onMoveRequest: (item: ShoppingItem) => void
 }
 
 function SortableItem({
   item,
   online,
-  canMove,
   onToggle,
   onDelete,
   onAmountSave,
   onNameSave,
-  onMoveRequest,
 }: SortableItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id })
@@ -94,6 +92,55 @@ function SortableItem({
   const [amountDraft, setAmountDraft] = useState('')
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
+
+  // ───────────────────────── Swipe-to-delete ─────────────────────────
+  const [swipeDx, setSwipeDx] = useState(0)
+  const swipeStartRef = useRef<{ x: number; y: number; id: number } | null>(null)
+  const isSwipingRef = useRef(false)
+  const justSwipedRef = useRef(false)
+  const SWIPE_ACTIVATE = 10
+  const SWIPE_DELETE_THRESHOLD = 80
+
+  const handleSwipePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!e.isPrimary) return
+    swipeStartRef.current = { x: e.clientX, y: e.clientY, id: e.pointerId }
+  }
+
+  const handleSwipePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current
+    if (!start || start.id !== e.pointerId) return
+    const dx = e.clientX - start.x
+    const dy = e.clientY - start.y
+    if (!isSwipingRef.current) {
+      if (dx < -SWIPE_ACTIVATE && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        isSwipingRef.current = true
+        try { e.currentTarget.setPointerCapture(e.pointerId) } catch {}
+      } else {
+        return
+      }
+    }
+    setSwipeDx(Math.max(-220, Math.min(0, dx)))
+  }
+
+  const handleSwipePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current
+    swipeStartRef.current = null
+    if (!isSwipingRef.current) return
+    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch {}
+    const shouldDelete = -swipeDx > SWIPE_DELETE_THRESHOLD
+    isSwipingRef.current = false
+    justSwipedRef.current = true
+    setTimeout(() => { justSwipedRef.current = false }, 100)
+    if (shouldDelete) onDelete(item.id)
+    setSwipeDx(0)
+  }
+
+  const handleClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (justSwipedRef.current) {
+      e.stopPropagation()
+      e.preventDefault()
+    }
+  }
 
   const startEditAmount = () => {
     if (!online) return
@@ -140,10 +187,38 @@ function SortableItem({
       {...attributes}
       {...listeners}
       className={cn(
-        'flex items-center gap-2 pl-1 pr-1 bg-white border-t border-gray-100 first:border-t-0 touch-none cursor-grab active:cursor-grabbing',
+        'relative overflow-hidden bg-white border-t border-gray-100 first:border-t-0 touch-none',
         isDragging && 'shadow-lg ring-1 ring-honey-300'
       )}
     >
+      {/* Rode "verwijder"-laag die zichtbaar wordt als je naar links swipet */}
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-0 flex items-center justify-end pr-5 bg-red-500 text-white transition-opacity',
+          swipeDx < 0 ? 'opacity-100' : 'opacity-0'
+        )}
+        aria-hidden
+      >
+        <Trash2
+          className={cn(
+            'h-5 w-5 transition-transform',
+            -swipeDx > SWIPE_DELETE_THRESHOLD && 'scale-125'
+          )}
+        />
+      </div>
+      <div
+        onPointerDown={handleSwipePointerDown}
+        onPointerMove={handleSwipePointerMove}
+        onPointerUp={handleSwipePointerUp}
+        onPointerCancel={handleSwipePointerUp}
+        onClickCapture={handleClickCapture}
+        style={{
+          transform: `translateX(${swipeDx}px)`,
+          transition: swipeStartRef.current ? 'none' : 'transform 180ms',
+          willChange: 'transform',
+        }}
+        className="flex items-center gap-2 pl-1 pr-1 bg-white cursor-grab active:cursor-grabbing"
+      >
       <button
         type="button"
         onClick={() => onToggle(item)}
@@ -252,18 +327,6 @@ function SortableItem({
         </span>
       )}
 
-      {canMove && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onMoveRequest(item) }}
-          className="flex items-center justify-center p-3 text-gray-300 hover:text-honey-700 shrink-0"
-          aria-label="Verplaatsen naar andere groep"
-          title="Verplaatsen naar andere groep"
-        >
-          <ArrowRightLeft className="h-4 w-4" />
-        </button>
-      )}
-
       <button
         type="button"
         onClick={() => onDelete(item.id)}
@@ -272,6 +335,32 @@ function SortableItem({
       >
         <X className="h-4 w-4" />
       </button>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Drop-zone voor een groep: hele body (items + "Nieuw item…" rij) accepteert
+// drops zodat een item ook in een lege groep of onderaan kan worden gezet.
+// ─────────────────────────────────────────────────────────────────────────────
+function GroupDropZone({
+  groupId,
+  children,
+}: {
+  groupId: string
+  children: React.ReactNode
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `group:${groupId}` })
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'transition-colors rounded-b-2xl',
+        isOver && 'bg-honey-50/70'
+      )}
+    >
+      {children}
     </div>
   )
 }
@@ -323,13 +412,17 @@ export default function LijstPage() {
     groupName: string
   } | null>(null)
 
-  // Verplaats-sheets
-  const [moveItem, setMoveItem] = useState<ShoppingItem | null>(null)
+  // Samenvoegen
   const [mergeSource, setMergeSource] = useState<ShoppingGroup | null>(null)
 
+  // Bron-groep van het item dat op dit moment gesleept wordt (voor cross-list drag)
+  const dragOriginGroupRef = useRef<string | null>(null)
+
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 5 } }),
+    // Alleen verticale beweging activeert dnd-kit drag, zodat een horizontale
+    // swipe kan doorschieten naar swipe-to-delete.
+    useSensor(PointerSensor, { activationConstraint: { distance: { y: 6 } } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
@@ -445,9 +538,11 @@ export default function LijstPage() {
   // ---------------------------------------------------------------------------
   const activateQuickAdd = (groupId: string) => {
     if (!requireOnline('Toevoegen alleen online beschikbaar')) return
+    if (quickTargetGroupId !== groupId) {
+      setQuickName('')
+      setQuickSuggestions([])
+    }
     setQuickTargetGroupId(groupId)
-    setQuickName('')
-    setQuickSuggestions([])
     requestAnimationFrame(() => quickInputRef.current?.focus())
   }
 
@@ -577,33 +672,6 @@ export default function LijstPage() {
     await supabase.from('shopping_items').update({ name: newName }).eq('id', itemId)
   }
 
-  const requestMoveItem = (item: ShoppingItem) => {
-    if (!requireOnline('Verplaatsen alleen online')) return
-    setMoveItem(item)
-  }
-
-  const moveItemToGroup = async (itemId: string, targetGroupId: string) => {
-    const targetItems = itemsByGroup[targetGroupId] ?? []
-    const maxSort = targetItems.length > 0
-      ? Math.max(...targetItems.map(i => i.manual_sort_order))
-      : -1
-    const newSort = maxSort + 1
-
-    setItems(prev =>
-      prev.map(i =>
-        i.id === itemId
-          ? { ...i, group_id: targetGroupId, manual_sort_order: newSort }
-          : i
-      )
-    )
-    setMoveItem(null)
-
-    await supabase
-      .from('shopping_items')
-      .update({ group_id: targetGroupId, manual_sort_order: newSort })
-      .eq('id', itemId)
-  }
-
   const cleanupChecked = async () => {
     if (!requireOnline('Opschonen alleen online')) { setCleanupOpen(false); return }
     const toDelete = items.filter(i => i.checked_at !== null).map(i => i.id)
@@ -617,30 +685,110 @@ export default function LijstPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // Volgorde binnen groep
+  // Drag & drop: binnen-groep sorteren en tussen-groep verplaatsen
   // ---------------------------------------------------------------------------
-  const persistOrder = async (ordered: ShoppingItem[]) => {
-    await Promise.all(
-      ordered.map((it, i) =>
-        supabase.from('shopping_items').update({ manual_sort_order: i }).eq('id', it.id)
-      )
-    )
+  const findContainer = (id: string): string | null => {
+    if (id.startsWith('group:')) return id.slice(6)
+    const it = items.find(i => i.id === id)
+    return it?.group_id ?? null
   }
 
-  const handleDragEnd = (groupId: string) => async (event: DragEndEvent) => {
+  const handleDragStart = (event: DragStartEvent) => {
+    const id = String(event.active.id)
+    const it = items.find(i => i.id === id)
+    dragOriginGroupRef.current = it?.group_id ?? null
+  }
+
+  // Tijdens slepen: als het item boven een andere groep/item zweeft, verplaats
+  // het alvast in lokale state zodat dnd-kit de drop-positie goed kan berekenen.
+  const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event
-    if (!over || active.id === over.id) return
-    const groupItems = itemsByGroup[groupId] ?? []
-    const oldIndex = groupItems.findIndex(i => i.id === active.id)
-    const newIndex = groupItems.findIndex(i => i.id === over.id)
-    if (oldIndex === -1 || newIndex === -1) return
-    const reordered = arrayMove(groupItems, oldIndex, newIndex).map((it, i) => ({
-      ...it,
-      manual_sort_order: i,
-    }))
-    const others = items.filter(it => it.group_id !== groupId)
-    setItems([...others, ...reordered])
-    persistOrder(reordered)
+    if (!over) return
+    const activeId = String(active.id)
+    const overId = String(over.id)
+    if (activeId === overId) return
+
+    const activeContainer = findContainer(activeId)
+    const overContainer = findContainer(overId)
+    if (!activeContainer || !overContainer) return
+    if (activeContainer === overContainer) return
+
+    setItems(prev => {
+      const activeItem = prev.find(i => i.id === activeId)
+      if (!activeItem) return prev
+      const others = prev.filter(i => i.id !== activeId)
+      const moved = { ...activeItem, group_id: overContainer }
+
+      if (overId.startsWith('group:')) {
+        // Drop op de groep-container zelf (lege groep of onderaan): achteraan
+        // inzetten binnen dat segment.
+        const before = others.filter(i => i.group_id !== overContainer)
+        const into = others.filter(i => i.group_id === overContainer)
+        return [...before, ...into, moved]
+      }
+
+      const overIndex = others.findIndex(i => i.id === overId)
+      if (overIndex === -1) return prev
+      return [...others.slice(0, overIndex), moved, ...others.slice(overIndex)]
+    })
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    const origGroup = dragOriginGroupRef.current
+    dragOriginGroupRef.current = null
+    if (!over) return
+
+    const activeId = String(active.id)
+    const overId = String(over.id)
+
+    const activeItem = items.find(i => i.id === activeId)
+    if (!activeItem) return
+    const targetGroup = activeItem.group_id
+
+    // Finaliseer de positie binnen de doelgroep (reorder tussen items).
+    let finalItems = items
+    if (!overId.startsWith('group:') && activeId !== overId) {
+      const overItem = items.find(i => i.id === overId)
+      if (overItem && overItem.group_id === targetGroup) {
+        const groupItems = items.filter(i => i.group_id === targetGroup)
+        const oldIndex = groupItems.findIndex(i => i.id === activeId)
+        const newIndex = groupItems.findIndex(i => i.id === overId)
+        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+          const reordered = arrayMove(groupItems, oldIndex, newIndex)
+          const others = items.filter(i => i.group_id !== targetGroup)
+          finalItems = [...others, ...reordered]
+        }
+      }
+    }
+
+    // Bereken nieuwe manual_sort_order per getroffen groep en pas ze toe in
+    // lokale state én op de server.
+    const affected = new Set<string>([targetGroup])
+    if (origGroup && origGroup !== targetGroup) affected.add(origGroup)
+
+    const reindexed = finalItems.map(it => {
+      if (!affected.has(it.group_id)) return it
+      const groupOrdered = finalItems.filter(x => x.group_id === it.group_id)
+      const idx = groupOrdered.findIndex(x => x.id === it.id)
+      return idx >= 0 ? { ...it, manual_sort_order: idx } : it
+    })
+    setItems(reindexed)
+
+    const updates: PromiseLike<unknown>[] = []
+    for (const gid of affected) {
+      const groupOrdered = reindexed.filter(i => i.group_id === gid)
+      groupOrdered.forEach((it, i) => {
+        const patch: { manual_sort_order: number; group_id?: string } = {
+          manual_sort_order: i,
+        }
+        if (it.id === activeId && origGroup && origGroup !== targetGroup) {
+          patch.group_id = targetGroup
+        }
+        updates.push(supabase.from('shopping_items').update(patch).eq('id', it.id))
+      })
+    }
+    await Promise.all(updates)
   }
 
   const sortDefaultByCategory = async () => {
@@ -657,7 +805,11 @@ export default function LijstPage() {
     const withOrder = sorted.map((it, i) => ({ ...it, manual_sort_order: i }))
     const others = items.filter(it => it.group_id !== defaultGroup.id)
     setItems([...others, ...withOrder])
-    persistOrder(withOrder)
+    await Promise.all(
+      withOrder.map((it, i) =>
+        supabase.from('shopping_items').update({ manual_sort_order: i }).eq('id', it.id)
+      )
+    )
   }
 
   // ---------------------------------------------------------------------------
@@ -856,66 +1008,57 @@ export default function LijstPage() {
   const checkedCount = items.filter(i => i.checked_at !== null).length
 
   // ---------------------------------------------------------------------------
-  // Helper: rendert de inline "Nieuw item…" rij voor een groep.
-  // Ongefocused = placeholder-rij; tap activeert, suggestie-dropdown klapt uit.
+  // Helper: rendert de actieve "Nieuw item…" invoerrij + suggestie-dropdown.
+  // Wordt alleen gerenderd als de quick-add actief is voor deze groep; in rust
+  // toont de groep-card in plaats daarvan een ronde honey-plus op de onderrand.
   // ---------------------------------------------------------------------------
-  const renderInlineAddRow = (groupId: string, hasItemsAbove: boolean) => {
-    const isActive = quickTargetGroupId === groupId
-
+  const renderActiveAddRow = (hasItemsAbove: boolean) => {
     return (
       <div className={cn('relative', hasItemsAbove && 'border-t border-gray-100')}>
-        {isActive ? (
-          <div className="flex items-center gap-2 pl-1 pr-1">
-            <span className="flex items-center justify-center p-3 shrink-0" aria-hidden>
-              <Plus className="h-4 w-4 text-honey-600" strokeWidth={2.5} />
-            </span>
-            <input
-              ref={quickInputRef}
-              value={quickName}
-              onChange={(e) => setQuickName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && quickName.trim() && !quickAdding) {
-                  e.preventDefault()
-                  quickAdd(quickName)
-                } else if (e.key === 'Escape') {
-                  deactivateQuickAdd()
-                }
-              }}
-              placeholder="Nieuw item…"
-              className="flex-1 py-2.5 bg-transparent text-[15px] placeholder:text-gray-400 outline-none min-w-0"
+        <div className="flex items-center gap-2 pl-1 pr-1">
+          <span className="flex items-center justify-center p-3 shrink-0" aria-hidden>
+            <span className="w-5 h-5 rounded border-2 border-gray-300" />
+          </span>
+          <input
+            ref={quickInputRef}
+            value={quickName}
+            onChange={(e) => setQuickName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && quickName.trim() && !quickAdding) {
+                e.preventDefault()
+                quickAdd(quickName)
+              } else if (e.key === 'Escape') {
+                deactivateQuickAdd()
+              }
+            }}
+            onBlur={() => {
+              // Suggesties en de sluit-X gebruiken onMouseDown preventDefault,
+              // dus die stelen de focus niet. Elke andere klik buiten de rij
+              // sluit 'm netjes.
+              if (!quickAdding) deactivateQuickAdd()
+            }}
+            placeholder="Nieuw item…"
+            className="flex-1 py-2.5 bg-transparent text-[15px] placeholder:text-gray-400 outline-none min-w-0"
+          />
+          {quickAdding ? (
+            <span
+              className="h-4 w-4 border-2 border-honey-500 border-r-transparent rounded-full animate-spin shrink-0 mr-2"
+              aria-hidden
             />
-            {quickAdding ? (
-              <span
-                className="h-4 w-4 border-2 border-honey-500 border-r-transparent rounded-full animate-spin shrink-0 mr-2"
-                aria-hidden
-              />
-            ) : (
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={deactivateQuickAdd}
-                className="p-2 shrink-0 text-gray-400 hover:text-gray-600"
-                aria-label="Sluiten"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => activateQuickAdd(groupId)}
-            disabled={!online}
-            className="w-full flex items-center gap-2 pl-1 pr-3 py-2.5 text-left hover:bg-honey-50/50 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
-          >
-            <span className="flex items-center justify-center p-3 shrink-0" aria-hidden>
-              <Plus className="h-4 w-4 text-gray-300" strokeWidth={2.5} />
-            </span>
-            <span className="flex-1 text-[15px] text-gray-400">Nieuw item…</span>
-          </button>
-        )}
+          ) : (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={deactivateQuickAdd}
+              className="flex items-center justify-center p-3 shrink-0 text-gray-400 hover:text-gray-600"
+              aria-label="Sluiten"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
 
-        {isActive && quickName.trim().length > 0 && (
+        {quickName.trim().length > 0 && (
           <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white rounded-xl border border-gray-200 shadow-lg divide-y divide-gray-100 max-h-72 overflow-y-auto">
             {quickSuggestions.map((s) => (
               <button
@@ -1073,20 +1216,29 @@ export default function LijstPage() {
       )}
 
       {/* Groepen — allemaal gelijkwaardig, behalve dat de default-groep
-          niet verwijderd of samengevoegd kan worden */}
-      <section className="mt-2 space-y-3">
+          niet verwijderd of samengevoegd kan worden. Eén DndContext omvat
+          alle groepen, zodat items ook tussen groepen gesleept kunnen worden. */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+      <section className="mt-2 space-y-10">
         {groups.map(group => {
           const groupItems = itemsByGroup[group.id] ?? []
           const isRenaming = renamingGroupId === group.id
           const isDefault = group.is_default
+          const isAddActive = quickTargetGroupId === group.id
 
           return (
             <div
               key={group.id}
-              className="bg-white rounded-2xl border border-gray-200"
+              className="relative bg-white rounded-2xl border border-gray-200"
             >
-              <div className="flex items-center border-b border-gray-100">
-                <div className="flex-1 flex items-center gap-2 pl-4 py-2.5 min-w-0">
+              <div className="flex items-center border-b border-gray-200 bg-honey-50/60 rounded-t-2xl">
+                <div className="flex-1 flex items-center gap-2 pl-4 py-3 min-w-0">
                   {isRenaming ? (
                     <input
                       autoFocus
@@ -1097,11 +1249,11 @@ export default function LijstPage() {
                         if (e.key === 'Escape') setRenamingGroupId(null)
                       }}
                       onBlur={() => saveRenameGroup(group.id)}
-                      className="flex-1 bg-transparent text-[15px] text-gray-900 outline-none"
+                      className="flex-1 bg-transparent text-lg font-bold text-gray-900 outline-none"
                     />
                   ) : (
                     <span className="flex items-baseline gap-1.5 min-w-0">
-                      <span className="text-[15px] text-gray-900 font-medium truncate">
+                      <span className="text-lg font-bold text-gray-900 truncate">
                         {group.name}
                       </span>
                       <span className="text-[12px] text-gray-400 shrink-0 tabular-nums">
@@ -1147,35 +1299,38 @@ export default function LijstPage() {
                 {isDefault && <div className="mr-1" />}
               </div>
 
-              <div>
+              <GroupDropZone groupId={group.id}>
                 {groupItems.length > 0 && (
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleDragEnd(group.id)}
+                  <SortableContext
+                    items={groupItems.map(i => i.id)}
+                    strategy={verticalListSortingStrategy}
                   >
-                    <SortableContext
-                      items={groupItems.map(i => i.id)}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      {groupItems.map(item => (
-                        <SortableItem
-                          key={item.id}
-                          item={item}
-                          online={online}
-                          onToggle={toggleChecked}
-                          onDelete={deleteItem}
-                          onAmountSave={saveAmount}
-                          onNameSave={saveName}
-                          canMove={groups.length > 1}
-                          onMoveRequest={requestMoveItem}
-                        />
-                      ))}
-                    </SortableContext>
-                  </DndContext>
+                    {groupItems.map(item => (
+                      <SortableItem
+                        key={item.id}
+                        item={item}
+                        online={online}
+                        onToggle={toggleChecked}
+                        onDelete={deleteItem}
+                        onAmountSave={saveAmount}
+                        onNameSave={saveName}
+                      />
+                    ))}
+                  </SortableContext>
                 )}
-                {renderInlineAddRow(group.id, groupItems.length > 0)}
-              </div>
+                {isAddActive && renderActiveAddRow(groupItems.length > 0)}
+              </GroupDropZone>
+
+              <button
+                type="button"
+                onClick={() => activateQuickAdd(group.id)}
+                disabled={!online}
+                className="absolute -bottom-7 right-4 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-honey-500 text-honey-950 shadow-md shadow-honey-900/25 hover:bg-honey-600 active:scale-95 transition-all touch-manipulation disabled:opacity-40 disabled:pointer-events-none"
+                aria-label={`Nieuw item in ${group.name}`}
+                title={`Nieuw item in ${group.name}`}
+              >
+                <Plus className="h-5 w-5" strokeWidth={2.5} />
+              </button>
             </div>
           )
         })}
@@ -1183,8 +1338,8 @@ export default function LijstPage() {
         {/* Nieuwe groep — draft-card met naam-input */}
         {addingGroup && (
           <div className="bg-white rounded-2xl border border-honey-300">
-            <div className="flex items-center border-b border-gray-100">
-              <div className="flex-1 flex items-center gap-2 pl-4 py-2.5 min-w-0">
+            <div className="flex items-center border-b border-gray-200 bg-honey-50/60 rounded-t-2xl">
+              <div className="flex-1 flex items-center gap-2 pl-4 py-3 min-w-0">
                 <input
                   ref={newGroupInputRef}
                   autoFocus
@@ -1199,7 +1354,7 @@ export default function LijstPage() {
                   }}
                   onBlur={createGroup}
                   placeholder="Naam van de groep"
-                  className="flex-1 bg-transparent text-[15px] text-gray-900 font-medium placeholder-gray-400 outline-none"
+                  className="flex-1 bg-transparent text-lg font-bold text-gray-900 placeholder-gray-400 outline-none"
                 />
               </div>
               <button
@@ -1227,6 +1382,7 @@ export default function LijstPage() {
           </div>
         )}
       </section>
+      </DndContext>
 
       {/* FAB — nieuwe groep */}
       {!addingGroup && (
@@ -1263,40 +1419,6 @@ export default function LijstPage() {
           </div>
         </div>
       </Modal>
-
-      {/* Verplaats-sheet — kies doelgroep voor een item */}
-      <BottomSheet
-        open={moveItem !== null}
-        onClose={() => setMoveItem(null)}
-        title={moveItem ? `'${moveItem.name}' verplaatsen` : ''}
-      >
-        {moveItem && (
-          <div className="space-y-3">
-            <p className="text-xs text-gray-500">
-              Kies waar het naartoe moet:
-            </p>
-            <div className="flex flex-col gap-1.5">
-              {groups
-                .filter(g => g.id !== moveItem.group_id)
-                .map(g => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => moveItemToGroup(moveItem.id, g.id)}
-                    className="flex items-center justify-between px-4 py-3 rounded-xl bg-gray-50 hover:bg-honey-50 text-left touch-manipulation transition-colors"
-                  >
-                    <span className="text-[15px] text-gray-900 font-medium">
-                      {g.name}
-                    </span>
-                    <span className="text-[11px] text-gray-400 tabular-nums">
-                      ({itemsByGroup[g.id]?.length ?? 0})
-                    </span>
-                  </button>
-                ))}
-            </div>
-          </div>
-        )}
-      </BottomSheet>
 
       {/* Offline / sync toast */}
       {offlineToast && (

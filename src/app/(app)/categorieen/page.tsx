@@ -18,7 +18,7 @@ export default function InstellingenPage() {
         {/* Segmented control (Apple-stijl) */}
         <div className="mt-4 inline-flex items-center bg-gray-200/70 rounded-full p-0.5 w-full sm:w-auto">
           <TabButton active={tab === 'categorieen'} onClick={() => setTab('categorieen')}>
-            Categorie&euml;n
+            Receptcategorie&euml;n
           </TabButton>
           <TabButton active={tab === 'herhaling'} onClick={() => setTab('herhaling')}>
             Boodschappenregels
