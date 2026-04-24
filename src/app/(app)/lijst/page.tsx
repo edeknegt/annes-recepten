@@ -93,55 +93,6 @@ function SortableItem({
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
 
-  // ───────────────────────── Swipe-to-delete ─────────────────────────
-  const [swipeDx, setSwipeDx] = useState(0)
-  const swipeStartRef = useRef<{ x: number; y: number; id: number } | null>(null)
-  const isSwipingRef = useRef(false)
-  const justSwipedRef = useRef(false)
-  const SWIPE_ACTIVATE = 10
-  const SWIPE_DELETE_THRESHOLD = 80
-
-  const handleSwipePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!e.isPrimary) return
-    swipeStartRef.current = { x: e.clientX, y: e.clientY, id: e.pointerId }
-  }
-
-  const handleSwipePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const start = swipeStartRef.current
-    if (!start || start.id !== e.pointerId) return
-    const dx = e.clientX - start.x
-    const dy = e.clientY - start.y
-    if (!isSwipingRef.current) {
-      if (dx < -SWIPE_ACTIVATE && Math.abs(dx) > Math.abs(dy) * 1.5) {
-        isSwipingRef.current = true
-        try { e.currentTarget.setPointerCapture(e.pointerId) } catch {}
-      } else {
-        return
-      }
-    }
-    setSwipeDx(Math.max(-220, Math.min(0, dx)))
-  }
-
-  const handleSwipePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    const start = swipeStartRef.current
-    swipeStartRef.current = null
-    if (!isSwipingRef.current) return
-    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch {}
-    const shouldDelete = -swipeDx > SWIPE_DELETE_THRESHOLD
-    isSwipingRef.current = false
-    justSwipedRef.current = true
-    setTimeout(() => { justSwipedRef.current = false }, 100)
-    if (shouldDelete) onDelete(item.id)
-    setSwipeDx(0)
-  }
-
-  const handleClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (justSwipedRef.current) {
-      e.stopPropagation()
-      e.preventDefault()
-    }
-  }
-
   const startEditAmount = () => {
     if (!online) return
     setAmountDraft(item.amount_text ?? '')
@@ -187,38 +138,11 @@ function SortableItem({
       {...attributes}
       {...listeners}
       className={cn(
-        'relative overflow-hidden bg-white border-t border-gray-100 first:border-t-0 touch-none',
+        'relative bg-white border-t border-gray-100 first:border-t-0',
         isDragging && 'shadow-lg ring-1 ring-honey-300'
       )}
     >
-      {/* Rode "verwijder"-laag die zichtbaar wordt als je naar links swipet */}
-      <div
-        className={cn(
-          'pointer-events-none absolute inset-0 flex items-center justify-end pr-5 bg-red-500 text-white transition-opacity',
-          swipeDx < 0 ? 'opacity-100' : 'opacity-0'
-        )}
-        aria-hidden
-      >
-        <Trash2
-          className={cn(
-            'h-5 w-5 transition-transform',
-            -swipeDx > SWIPE_DELETE_THRESHOLD && 'scale-125'
-          )}
-        />
-      </div>
-      <div
-        onPointerDown={handleSwipePointerDown}
-        onPointerMove={handleSwipePointerMove}
-        onPointerUp={handleSwipePointerUp}
-        onPointerCancel={handleSwipePointerUp}
-        onClickCapture={handleClickCapture}
-        style={{
-          transform: `translateX(${swipeDx}px)`,
-          transition: swipeStartRef.current ? 'none' : 'transform 180ms',
-          willChange: 'transform',
-        }}
-        className="flex items-center gap-2 pl-1 pr-1 bg-white cursor-grab active:cursor-grabbing"
-      >
+      <div className="flex items-center gap-2 pl-1 pr-1 bg-white cursor-grab active:cursor-grabbing">
       <button
         type="button"
         onClick={() => onToggle(item)}
@@ -419,9 +343,7 @@ export default function LijstPage() {
   const dragOriginGroupRef = useRef<string | null>(null)
 
   const sensors = useSensors(
-    // Alleen verticale beweging activeert dnd-kit drag, zodat een horizontale
-    // swipe kan doorschieten naar swipe-to-delete.
-    useSensor(PointerSensor, { activationConstraint: { distance: { y: 6 } } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
