@@ -189,7 +189,7 @@ export function AddToListButton({ recipeId, ingredients }: AddToListButtonProps)
       <button
         type="button"
         onClick={openSheet}
-        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-honey-300 bg-white text-honey-700 hover:bg-honey-50 hover:border-honey-400 transition-colors touch-manipulation"
+        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-honey-500 text-honey-950 hover:bg-honey-600 transition-colors touch-manipulation"
         title="Toevoegen aan boodschappenlijst"
         aria-label="Toevoegen aan boodschappenlijst"
       >

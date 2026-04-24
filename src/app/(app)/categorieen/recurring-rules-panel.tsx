@@ -1,10 +1,9 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import Link from 'next/link'
-import { ArrowLeft, Plus, Pencil, X, Check, Search, Repeat } from 'lucide-react'
+import { Plus, Pencil, X, Search, Repeat } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { Modal } from '@/components/ui/modal'
+import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -51,7 +50,7 @@ function ruleToForm(r: RecurringRule): RuleForm {
   }
 }
 
-export default function HerhalingPage() {
+export function RecurringRulesPanel() {
   const supabase = createClient()
 
   const [rules, setRules] = useState<RecurringRule[]>([])
@@ -158,118 +157,75 @@ export default function HerhalingPage() {
     setDeleteConfirm(null)
   }
 
-  const activeRules = rules.filter(r => r.active)
-  const inactiveRules = rules.filter(r => !r.active)
-
   if (loading) {
-    return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center bg-honey-100">
-        <div className="loading-avatar w-20 h-20 rounded-2xl border-2 border-honey-300 shadow-sm">
-          <img
-            src="/erik-anne-drinks.png"
-            alt=""
-            className="w-full h-full object-cover rounded-2xl"
-          />
-        </div>
-        <p className="mt-4 text-sm text-gray-400 font-medium">Laden...</p>
-      </div>
-    )
+    return <p className="text-sm text-gray-400">Laden&hellip;</p>
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 bg-honey-100">
-        <Link
-          href="/lijst"
-          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Terug naar lijst
-        </Link>
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="page-title">Herhaalregels</h1>
-          <Button size="sm" onClick={openNew}>
-            <Plus className="h-4 w-4 mr-1" />
-            Nieuwe regel
-          </Button>
-        </div>
-      </div>
-
+    <>
       {rules.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-200 px-4 py-12 text-center mt-2">
           <Repeat className="h-8 w-8 text-gray-300 mx-auto mb-3" />
           <p className="text-sm text-gray-500 mb-4">
-            Nog geen herhaalregels. Maak er een aan voor producten die je regelmatig nodig hebt.
+            Nog geen boodschappenregels. Maak er een aan voor producten die je regelmatig nodig hebt.
           </p>
           <Button onClick={openNew}>
             <Plus className="h-4 w-4 mr-1" />
-            Eerste regel aanmaken
+            Eerste boodschappenregel aanmaken
           </Button>
         </div>
       ) : (
-        <>
-          {activeRules.length > 0 && (
-            <section className="mt-2">
-              <h2 className="px-1 mb-2 text-xs uppercase tracking-wider text-gray-500 font-semibold">
-                Actief
-              </h2>
-              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                {activeRules.map((rule, i) => (
-                  <RuleRow
-                    key={rule.id}
-                    rule={rule}
-                    first={i === 0}
-                    onToggle={toggleActive}
-                    onEdit={openEdit}
-                    onDelete={setDeleteConfirm}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {inactiveRules.length > 0 && (
-            <section className="mt-6">
-              <h2 className="px-1 mb-2 text-xs uppercase tracking-wider text-gray-500 font-semibold">
-                Gepauzeerd
-              </h2>
-              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden opacity-70">
-                {inactiveRules.map((rule, i) => (
-                  <RuleRow
-                    key={rule.id}
-                    rule={rule}
-                    first={i === 0}
-                    onToggle={toggleActive}
-                    onEdit={openEdit}
-                    onDelete={setDeleteConfirm}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-        </>
+        <section className="mt-2">
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            {rules.map((rule, i) => (
+              <RuleRow
+                key={rule.id}
+                rule={rule}
+                first={i === 0}
+                onToggle={toggleActive}
+                onEdit={openEdit}
+                onDelete={setDeleteConfirm}
+              />
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Editor modal */}
-      <Modal
+      <BottomSheet
         open={editorOpen}
         onClose={() => setEditorOpen(false)}
-        title={form.id ? 'Regel bewerken' : 'Nieuwe regel'}
+        title={form.id ? 'Boodschappenregel bewerken' : 'Nieuwe boodschappenregel'}
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Product
-            </label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-              <input
-                ref={nameRef}
-                value={form.name}
-                onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value, product_id: null }))}
-                placeholder="bijv. brood, wc-papier"
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-honey-200 focus:border-honey-500 placeholder:text-gray-400"
-              />
+            <div className="flex gap-3">
+              <div className="flex-1 min-w-0">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Product
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  <input
+                    ref={nameRef}
+                    value={form.name}
+                    onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value, product_id: null }))}
+                    placeholder="bijv. brood, wc-papier"
+                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-honey-200 focus:border-honey-500 placeholder:text-gray-400"
+                  />
+                </div>
+              </div>
+              <div className="w-28 shrink-0">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Aantal
+                </label>
+                <input
+                  value={form.amount_text}
+                  onChange={(e) => setForm(prev => ({ ...prev, amount_text: e.target.value }))}
+                  placeholder="1 brood"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-honey-200 focus:border-honey-500 placeholder:text-gray-400"
+                />
+              </div>
             </div>
             {suggestions.length > 0 && !suggestions.some(s => s.name === form.name) && (
               <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
@@ -285,18 +241,6 @@ export default function HerhalingPage() {
                 ))}
               </div>
             )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Hoeveelheid <span className="text-gray-400 font-normal">(optioneel)</span>
-            </label>
-            <input
-              value={form.amount_text}
-              onChange={(e) => setForm(prev => ({ ...prev, amount_text: e.target.value }))}
-              placeholder="bijv. 1 brood, 6 rollen"
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-honey-200 focus:border-honey-500 placeholder:text-gray-400"
-            />
           </div>
 
           <div>
@@ -326,111 +270,82 @@ export default function HerhalingPage() {
             </div>
           </div>
 
-          {/* Schema details */}
+          {/* Schema details — alles inline op één regel */}
           {form.rule_type === 'weekly' && (
-            <div className="flex items-end gap-2">
-              <div className="w-24">
-                <label className="block text-xs text-gray-500 mb-1">Elke</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={form.interval_n}
-                  onChange={(e) =>
-                    setForm(prev => ({ ...prev, interval_n: Math.max(1, parseInt(e.target.value) || 1) }))
-                  }
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-honey-200 focus:border-honey-500"
-                />
-              </div>
-              <span className="pb-2 text-sm text-gray-700">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-700">Elke</span>
+              <input
+                type="number"
+                min={1}
+                value={form.interval_n}
+                onChange={(e) =>
+                  setForm(prev => ({ ...prev, interval_n: Math.max(1, parseInt(e.target.value) || 1) }))
+                }
+                className="w-16 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-honey-200 focus:border-honey-500 tabular-nums"
+              />
+              <span className="text-sm text-gray-700 whitespace-nowrap">
                 {form.interval_n === 1 ? 'week op' : 'weken op'}
               </span>
-              <div className="flex-1">
-                <select
-                  value={form.day_of_week}
-                  onChange={(e) => setForm(prev => ({ ...prev, day_of_week: parseInt(e.target.value) }))}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-honey-200 focus:border-honey-500"
-                >
-                  {DAY_OF_WEEK_OPTIONS.map(d => (
-                    <option key={d.value} value={d.value}>{d.long}</option>
-                  ))}
-                </select>
-              </div>
+              <select
+                value={form.day_of_week}
+                onChange={(e) => setForm(prev => ({ ...prev, day_of_week: parseInt(e.target.value) }))}
+                className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-honey-200 focus:border-honey-500"
+              >
+                {DAY_OF_WEEK_OPTIONS.map(d => (
+                  <option key={d.value} value={d.value}>{d.long}</option>
+                ))}
+              </select>
             </div>
           )}
 
           {form.rule_type === 'monthly' && (
-            <div className="flex items-end gap-2">
-              <div className="w-24">
-                <label className="block text-xs text-gray-500 mb-1">Elke</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={form.interval_n}
-                  onChange={(e) =>
-                    setForm(prev => ({ ...prev, interval_n: Math.max(1, parseInt(e.target.value) || 1) }))
-                  }
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-honey-200 focus:border-honey-500"
-                />
-              </div>
-              <span className="pb-2 text-sm text-gray-700">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-700">Elke</span>
+              <input
+                type="number"
+                min={1}
+                value={form.interval_n}
+                onChange={(e) =>
+                  setForm(prev => ({ ...prev, interval_n: Math.max(1, parseInt(e.target.value) || 1) }))
+                }
+                className="w-16 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-honey-200 focus:border-honey-500 tabular-nums"
+              />
+              <span className="text-sm text-gray-700 whitespace-nowrap">
                 {form.interval_n === 1 ? 'maand op dag' : 'maanden op dag'}
               </span>
-              <div className="w-20">
-                <input
-                  type="number"
-                  min={1}
-                  max={31}
-                  value={form.day_of_month}
-                  onChange={(e) =>
-                    setForm(prev => ({
-                      ...prev,
-                      day_of_month: Math.min(31, Math.max(1, parseInt(e.target.value) || 1)),
-                    }))
-                  }
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-honey-200 focus:border-honey-500"
-                />
-              </div>
+              <input
+                type="number"
+                min={1}
+                max={31}
+                value={form.day_of_month}
+                onChange={(e) =>
+                  setForm(prev => ({
+                    ...prev,
+                    day_of_month: Math.min(31, Math.max(1, parseInt(e.target.value) || 1)),
+                  }))
+                }
+                className="w-16 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-honey-200 focus:border-honey-500 tabular-nums"
+              />
             </div>
           )}
 
           {form.rule_type === 'interval' && (
-            <div className="flex items-end gap-2">
-              <span className="pb-2 text-sm text-gray-700">Elke</span>
-              <div className="w-24">
-                <input
-                  type="number"
-                  min={1}
-                  value={form.interval_n}
-                  onChange={(e) =>
-                    setForm(prev => ({ ...prev, interval_n: Math.max(1, parseInt(e.target.value) || 1) }))
-                  }
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-honey-200 focus:border-honey-500"
-                />
-              </div>
-              <span className="pb-2 text-sm text-gray-700">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-700">Elke</span>
+              <input
+                type="number"
+                min={1}
+                value={form.interval_n}
+                onChange={(e) =>
+                  setForm(prev => ({ ...prev, interval_n: Math.max(1, parseInt(e.target.value) || 1) }))
+                }
+                className="w-16 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-honey-200 focus:border-honey-500 tabular-nums"
+              />
+              <span className="text-sm text-gray-700">
                 {form.interval_n === 1 ? 'dag' : 'dagen'}
               </span>
             </div>
           )}
-
-          <label className="flex items-center gap-2 cursor-pointer pt-2">
-            <button
-              type="button"
-              onClick={() => setForm(prev => ({ ...prev, active: !prev.active }))}
-              className={cn(
-                'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
-                form.active ? 'bg-honey-500' : 'bg-gray-300'
-              )}
-            >
-              <span
-                className={cn(
-                  'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-                  form.active ? 'translate-x-4' : 'translate-x-0.5'
-                )}
-              />
-            </button>
-            <span className="text-sm text-gray-700">Actief</span>
-          </label>
 
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" onClick={() => setEditorOpen(false)}>
@@ -441,13 +356,13 @@ export default function HerhalingPage() {
             </Button>
           </div>
         </div>
-      </Modal>
+      </BottomSheet>
 
       {/* Delete confirm */}
-      <Modal
+      <BottomSheet
         open={deleteConfirm !== null}
         onClose={() => setDeleteConfirm(null)}
-        title="Regel verwijderen"
+        title="Boodschappenregel verwijderen"
       >
         {deleteConfirm && (
           <div className="space-y-4">
@@ -464,8 +379,19 @@ export default function HerhalingPage() {
             </div>
           </div>
         )}
-      </Modal>
-    </div>
+      </BottomSheet>
+
+      {/* FAB — nieuwe boodschappenregel */}
+      <button
+        type="button"
+        onClick={openNew}
+        className="fixed z-30 right-4 lg:right-8 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:bottom-8 flex items-center justify-center w-14 h-14 rounded-full bg-honey-500 text-honey-950 shadow-lg shadow-honey-900/30 hover:bg-honey-600 active:scale-95 transition-all touch-manipulation"
+        aria-label="Nieuwe boodschappenregel"
+        title="Nieuwe boodschappenregel"
+      >
+        <Plus className="h-6 w-6" strokeWidth={2.5} />
+      </button>
+    </>
   )
 }
 

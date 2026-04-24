@@ -1,5 +1,5 @@
 -- =============================================================================
--- Annes Recepten - WebAuthn (Face ID / Passkey) tabel
+-- Anne's keuken - WebAuthn (Face ID / Passkey) tabel
 -- =============================================================================
 -- Voer dit draaien NA supabase-schema.sql.
 -- Slaat geregistreerde passkeys (Face ID / Touch ID / Windows Hello) op.

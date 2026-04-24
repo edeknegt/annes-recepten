@@ -1,9 +1,9 @@
-/* Annes Recepten — service worker voor offline shell + assets.
+/* Anne's keuken — service worker voor offline shell + assets.
  * Update CACHE_VERSION bij breaking changes om oude caches op te ruimen. */
 
-const CACHE_VERSION = 'v1'
-const STATIC_CACHE = `annes-recepten-static-${CACHE_VERSION}`
-const RUNTIME_CACHE = `annes-recepten-runtime-${CACHE_VERSION}`
+const CACHE_VERSION = 'v2'
+const STATIC_CACHE = `annes-keuken-static-${CACHE_VERSION}`
+const RUNTIME_CACHE = `annes-keuken-runtime-${CACHE_VERSION}`
 
 const PRECACHE_URLS = [
   '/',

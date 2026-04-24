@@ -9,13 +9,13 @@ const raleway = Raleway({
 });
 
 export const metadata: Metadata = {
-  title: "Recepten van Anne",
-  description: "Anne's persoonlijke receptenverzameling",
+  title: "Anne's keuken",
+  description: "Recepten en boodschappenlijst van Anne",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Recepten van Anne",
+    title: "Anne's keuken",
   },
 };
 

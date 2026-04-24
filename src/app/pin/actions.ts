@@ -16,7 +16,7 @@ export async function verifyPin(formData: FormData) {
   }
 
   const cookieStore = await cookies()
-  cookieStore.set('annes-recepten-auth', 'authenticated', {
+  cookieStore.set('annes-keuken-auth', 'authenticated', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -29,7 +29,7 @@ export async function verifyPin(formData: FormData) {
 
 export async function logout() {
   const cookieStore = await cookies()
-  cookieStore.set('annes-recepten-auth', '', {
+  cookieStore.set('annes-keuken-auth', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',

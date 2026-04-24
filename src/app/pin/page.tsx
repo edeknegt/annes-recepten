@@ -138,11 +138,10 @@ export default function PinPage() {
     <div className="fixed inset-0 flex flex-col items-center bg-honey-100 p-6 pt-[8vh]">
       <img
         src="/erik-anne-drinks.png"
-        alt="Recepten"
+        alt="Anne&apos;s keuken"
         className="w-32 h-32 rounded-2xl shadow-md border-2 border-honey-200 mb-6"
       />
-      <h1 className="text-2xl font-bold text-gray-900">Recepten</h1>
-      <p className="text-sm text-gray-500 mt-1 mb-8">Hoi Anne!</p>
+      <h1 className="text-2xl font-bold text-gray-900 mb-8">Anne&apos;s keuken</h1>
 
       {stage === 'pending' && (
         <div className="flex flex-col items-center max-w-xs text-center">

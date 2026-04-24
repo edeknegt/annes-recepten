@@ -79,7 +79,7 @@ function generateHtml(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${recipe.title} — Recepten van Anne</title>
+<title>${recipe.title} — Anne's keuken</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap');
   html { box-sizing: border-box; }
@@ -133,7 +133,7 @@ function generateHtml(
 </div>
 
 ${recipe.source ? `<div class="source">Bron: ${recipe.source_url ? `<a href="${recipe.source_url}">${recipe.source}</a>` : recipe.source}</div>` : ''}
-<div class="footer">Gedeeld vanuit de receptenapp van Anne</div>
+<div class="footer">Gedeeld vanuit Anne's keuken</div>
 </body>
 </html>`
 }

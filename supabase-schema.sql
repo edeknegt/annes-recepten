@@ -1,5 +1,5 @@
 -- =============================================================================
--- Annes Recepten - Supabase Database Schema
+-- Anne's keuken - Supabase Database Schema
 -- =============================================================================
 -- Nederlandse recepten-app database schema voor Supabase (PostgreSQL)
 -- Bevat tabellen, indexen, triggers, RLS policies en seed data.

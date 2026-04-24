@@ -9,7 +9,7 @@ const TRUSTED_IPS = (process.env.TRUSTED_IPS ?? '')
   .filter(Boolean)
 
 const AUTH_COOKIE = {
-  name: 'annes-recepten-auth',
+  name: 'annes-keuken-auth',
   value: 'authenticated',
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',

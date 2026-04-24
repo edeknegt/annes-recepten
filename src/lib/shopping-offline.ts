@@ -1,8 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ShoppingGroup, ShoppingItem, ShopCategory, RecurringRule } from './types'
 
-const SNAPSHOT_KEY = 'annes-recepten:shopping-snapshot'
-const OUTBOX_KEY = 'annes-recepten:shopping-outbox'
+const SNAPSHOT_KEY = 'annes-keuken:shopping-snapshot'
+const OUTBOX_KEY = 'annes-keuken:shopping-outbox'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Snapshot (volledige read-cache van de lijst-pagina)

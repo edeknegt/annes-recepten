@@ -1,7 +1,7 @@
 {
-  "name": "Recepten van Anne",
-  "short_name": "Recepten",
-  "description": "Anne's persoonlijke receptenverzameling",
+  "name": "Anne's keuken",
+  "short_name": "Anne's keuken",
+  "description": "Recepten en boodschappenlijst van Anne",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FFFEF7",

@@ -1,18 +1,18 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
-import Link from 'next/link'
 import {
   Plus,
   Check,
   X,
-  ArrowDownAZ,
+  Route,
   Trash2,
   Pencil,
   Merge,
   FolderPlus,
   Repeat,
   WifiOff,
+  ArrowRightLeft,
 } from 'lucide-react'
 import {
   DndContext,
@@ -35,6 +35,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
+import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { cn } from '@/lib/utils'
 import { mergeAmountTexts, shopCategoryPillClass } from '@/lib/shopping'
 import { describeRule, isRuleDue } from '@/lib/recurring'
@@ -60,13 +61,24 @@ import type {
 interface SortableItemProps {
   item: ShoppingItem
   online: boolean
+  canMove: boolean
   onToggle: (item: ShoppingItem) => void
   onDelete: (itemId: string) => void
   onAmountSave: (itemId: string, newText: string | null) => void
   onNameSave: (itemId: string, newName: string) => void
+  onMoveRequest: (item: ShoppingItem) => void
 }
 
-function SortableItem({ item, online, onToggle, onDelete, onAmountSave, onNameSave }: SortableItemProps) {
+function SortableItem({
+  item,
+  online,
+  canMove,
+  onToggle,
+  onDelete,
+  onAmountSave,
+  onNameSave,
+  onMoveRequest,
+}: SortableItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id })
 
@@ -240,6 +252,18 @@ function SortableItem({ item, online, onToggle, onDelete, onAmountSave, onNameSa
         </span>
       )}
 
+      {canMove && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onMoveRequest(item) }}
+          className="flex items-center justify-center p-3 text-gray-300 hover:text-honey-700 shrink-0"
+          aria-label="Verplaatsen naar andere groep"
+          title="Verplaatsen naar andere groep"
+        >
+          <ArrowRightLeft className="h-4 w-4" />
+        </button>
+      )}
+
       <button
         type="button"
         onClick={() => onDelete(item.id)}
@@ -294,11 +318,14 @@ export default function LijstPage() {
 
   // Confirmaties
   const [cleanupOpen, setCleanupOpen] = useState(false)
-  const [groupConfirm, setGroupConfirm] = useState<{
+  const [deleteGroupConfirm, setDeleteGroupConfirm] = useState<{
     groupId: string
     groupName: string
-    action: 'delete' | 'merge'
   } | null>(null)
+
+  // Verplaats-sheets
+  const [moveItem, setMoveItem] = useState<ShoppingItem | null>(null)
+  const [mergeSource, setMergeSource] = useState<ShoppingGroup | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -550,6 +577,33 @@ export default function LijstPage() {
     await supabase.from('shopping_items').update({ name: newName }).eq('id', itemId)
   }
 
+  const requestMoveItem = (item: ShoppingItem) => {
+    if (!requireOnline('Verplaatsen alleen online')) return
+    setMoveItem(item)
+  }
+
+  const moveItemToGroup = async (itemId: string, targetGroupId: string) => {
+    const targetItems = itemsByGroup[targetGroupId] ?? []
+    const maxSort = targetItems.length > 0
+      ? Math.max(...targetItems.map(i => i.manual_sort_order))
+      : -1
+    const newSort = maxSort + 1
+
+    setItems(prev =>
+      prev.map(i =>
+        i.id === itemId
+          ? { ...i, group_id: targetGroupId, manual_sort_order: newSort }
+          : i
+      )
+    )
+    setMoveItem(null)
+
+    await supabase
+      .from('shopping_items')
+      .update({ group_id: targetGroupId, manual_sort_order: newSort })
+      .eq('id', itemId)
+  }
+
   const cleanupChecked = async () => {
     if (!requireOnline('Opschonen alleen online')) { setCleanupOpen(false); return }
     const toDelete = items.filter(i => i.checked_at !== null).map(i => i.id)
@@ -668,23 +722,22 @@ export default function LijstPage() {
     await supabase.from('shopping_groups').delete().eq('id', groupId)
     setGroups(prev => prev.filter(g => g.id !== groupId))
     setItems(prev => prev.filter(it => it.group_id !== groupId))
-    setGroupConfirm(null)
+    setDeleteGroupConfirm(null)
   }
 
-  const mergeGroup = async (groupId: string) => {
-    if (!defaultGroup) return
-    const srcItems = itemsByGroup[groupId] ?? []
-    const defItems = itemsByGroup[defaultGroup.id] ?? []
+  const mergeGroup = async (sourceId: string, targetId: string) => {
+    const srcItems = itemsByGroup[sourceId] ?? []
+    const tgtItems = itemsByGroup[targetId] ?? []
 
     const openByName = new Map<string, { id: string; amount_text: string | null }>()
-    for (const it of defItems) {
+    for (const it of tgtItems) {
       if (it.checked_at === null) {
         openByName.set(it.name.trim().toLowerCase(), { id: it.id, amount_text: it.amount_text })
       }
     }
 
-    let nextSort = defItems.length > 0
-      ? Math.max(...defItems.map(i => i.manual_sort_order)) + 1
+    let nextSort = tgtItems.length > 0
+      ? Math.max(...tgtItems.map(i => i.manual_sort_order)) + 1
       : 0
 
     for (const it of srcItems) {
@@ -702,15 +755,15 @@ export default function LijstPage() {
         await supabase
           .from('shopping_items')
           .update({
-            group_id: defaultGroup.id,
+            group_id: targetId,
             manual_sort_order: nextSort++,
           })
           .eq('id', it.id)
       }
     }
 
-    await supabase.from('shopping_groups').delete().eq('id', groupId)
-    setGroupConfirm(null)
+    await supabase.from('shopping_groups').delete().eq('id', sourceId)
+    setMergeSource(null)
     fetchData()
   }
 
@@ -940,28 +993,15 @@ export default function LijstPage() {
             )}
           </div>
           <div className="flex items-center gap-1">
-            <Link
-              href="/lijst/herhaling"
-              className="relative inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium text-gray-700 bg-white/70 hover:bg-white border border-gray-200"
-              title="Herhaalregels beheren"
-            >
-              <Repeat className="h-4 w-4" />
-              <span className="hidden sm:inline">Herhalingen</span>
-              {dueRules.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-honey-500 text-honey-950 text-[10px] font-bold leading-none">
-                  {dueRules.length}
-                </span>
-              )}
-            </Link>
             <button
               type="button"
               onClick={sortDefaultByCategory}
               disabled={defaultItems.length === 0}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium text-honey-800 bg-white/70 hover:bg-white disabled:opacity-40 disabled:pointer-events-none border border-honey-300/60"
-              title="Sorteer hoofdlijst op schap-categorie"
+              title="Sorteer op loopvolgorde in de winkel"
             >
-              <ArrowDownAZ className="h-4 w-4" />
-              <span className="hidden sm:inline">Categorie</span>
+              <Route className="h-4 w-4" />
+              <span className="hidden sm:inline">Loopvolgorde</span>
             </button>
             <button
               type="button"
@@ -1012,8 +1052,8 @@ export default function LijstPage() {
                   type="button"
                   onClick={() => acceptSuggestion(rule)}
                   className="flex items-center justify-center p-2.5 rounded-full bg-honey-500 text-honey-950 hover:bg-honey-600 shrink-0 touch-manipulation"
-                  title="Toevoegen aan hoofdlijst"
-                  aria-label="Toevoegen aan hoofdlijst"
+                  title={`Toevoegen aan ${defaultGroup?.name ?? 'lijst'}`}
+                  aria-label={`Toevoegen aan ${defaultGroup?.name ?? 'lijst'}`}
                 >
                   <Plus className="h-4 w-4" strokeWidth={2.5} />
                 </button>
@@ -1032,174 +1072,173 @@ export default function LijstPage() {
         </section>
       )}
 
-      {/* Hoofdlijst */}
-      <section className="mt-2">
-        {defaultGroup && adHocGroups.length > 0 && (
-          <h2 className="px-1 mb-2 text-xs uppercase tracking-wider text-gray-500 font-semibold">
-            {defaultGroup.name}
-          </h2>
-        )}
-        <div className="bg-white rounded-2xl border border-gray-200">
-          {defaultItems.length > 0 && (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={defaultGroup ? handleDragEnd(defaultGroup.id) : undefined}
+      {/* Groepen — allemaal gelijkwaardig, behalve dat de default-groep
+          niet verwijderd of samengevoegd kan worden */}
+      <section className="mt-2 space-y-3">
+        {groups.map(group => {
+          const groupItems = itemsByGroup[group.id] ?? []
+          const isRenaming = renamingGroupId === group.id
+          const isDefault = group.is_default
+
+          return (
+            <div
+              key={group.id}
+              className="bg-white rounded-2xl border border-gray-200"
             >
-              <SortableContext
-                items={defaultItems.map(i => i.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {defaultItems.map(item => (
-                  <SortableItem
-                    key={item.id}
-                    item={item}
-                    online={online}
-                    onToggle={toggleChecked}
-                    onDelete={deleteItem}
-                    onAmountSave={saveAmount}
-                    onNameSave={saveName}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-          )}
-
-          {defaultGroup && renderInlineAddRow(defaultGroup.id, defaultItems.length > 0)}
-        </div>
-      </section>
-
-      {/* Nieuwe-groep rij */}
-      <div className="mt-4 px-1">
-        {addingGroup ? (
-          <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 px-3 py-2">
-            <FolderPlus className="h-4 w-4 text-gray-400 shrink-0" />
-            <input
-              ref={newGroupInputRef}
-              value={newGroupName}
-              onChange={e => setNewGroupName(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') createGroup()
-                if (e.key === 'Escape') { setAddingGroup(false); setNewGroupName('') }
-              }}
-              onBlur={createGroup}
-              placeholder="Naam van de groep"
-              className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none"
-            />
-            <button
-              type="button"
-              onPointerDown={e => e.preventDefault()}
-              onClick={createGroup}
-              className="p-1 rounded text-honey-700 hover:bg-honey-50"
-            >
-              <Check className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={startAddGroup}
-            className="inline-flex items-center gap-1.5 text-sm text-honey-700 hover:text-honey-800 font-medium"
-          >
-            <FolderPlus className="h-4 w-4" />
-            Nieuwe groep
-          </button>
-        )}
-      </div>
-
-      {/* Ad-hoc groepen */}
-      {adHocGroups.length > 0 && (
-        <section className="mt-4 space-y-3">
-          {adHocGroups.map(group => {
-            const groupItems = itemsByGroup[group.id] ?? []
-            const isRenaming = renamingGroupId === group.id
-
-            return (
-              <div
-                key={group.id}
-                className="bg-white rounded-2xl border border-gray-200 overflow-hidden"
-              >
-                <div className="flex items-center border-b border-gray-100">
-                  <div className="flex-1 flex items-center gap-2 pl-4 py-2.5 min-w-0">
-                    {isRenaming ? (
-                      <input
-                        autoFocus
-                        value={renamingGroupName}
-                        onChange={e => setRenamingGroupName(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') saveRenameGroup(group.id)
-                          if (e.key === 'Escape') setRenamingGroupId(null)
-                        }}
-                        onBlur={() => saveRenameGroup(group.id)}
-                        className="flex-1 bg-transparent text-[15px] text-gray-900 outline-none"
-                      />
-                    ) : (
-                      <span className="flex flex-col min-w-0">
-                        <span className="text-[15px] text-gray-900 font-medium truncate">{group.name}</span>
-                        <span className="text-[11px] text-gray-400 mt-0.5">
-                          {groupItems.length} {groupItems.length === 1 ? 'item' : 'items'}
-                        </span>
+              <div className="flex items-center border-b border-gray-100">
+                <div className="flex-1 flex items-center gap-2 pl-4 py-2.5 min-w-0">
+                  {isRenaming ? (
+                    <input
+                      autoFocus
+                      value={renamingGroupName}
+                      onChange={e => setRenamingGroupName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') saveRenameGroup(group.id)
+                        if (e.key === 'Escape') setRenamingGroupId(null)
+                      }}
+                      onBlur={() => saveRenameGroup(group.id)}
+                      className="flex-1 bg-transparent text-[15px] text-gray-900 outline-none"
+                    />
+                  ) : (
+                    <span className="flex items-baseline gap-1.5 min-w-0">
+                      <span className="text-[15px] text-gray-900 font-medium truncate">
+                        {group.name}
                       </span>
-                    )}
-                  </div>
+                      <span className="text-[12px] text-gray-400 shrink-0 tabular-nums">
+                        ({groupItems.length})
+                      </span>
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => startRenameGroup(group)}
+                  className="flex items-center justify-center p-3 text-gray-400 hover:text-gray-700"
+                  title="Hernoemen"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+                {!isDefault && (
                   <button
                     type="button"
-                    onClick={() => startRenameGroup(group)}
-                    className="flex items-center justify-center p-3 text-gray-400 hover:text-gray-700"
-                    title="Hernoemen"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setGroupConfirm({ groupId: group.id, groupName: group.name, action: 'merge' })}
-                    disabled={!defaultGroup || groupItems.length === 0}
+                    onClick={() => setMergeSource(group)}
+                    disabled={groups.length < 2 || groupItems.length === 0}
                     className="flex items-center justify-center p-3 text-gray-400 hover:text-honey-700 disabled:opacity-30 disabled:pointer-events-none"
-                    title="Samenvoegen met hoofdlijst"
+                    title="Samenvoegen met andere groep"
                   >
                     <Merge className="h-4 w-4" />
                   </button>
+                )}
+                {!isDefault && (
                   <button
                     type="button"
-                    onClick={() => setGroupConfirm({ groupId: group.id, groupName: group.name, action: 'delete' })}
+                    onClick={() =>
+                      setDeleteGroupConfirm({
+                        groupId: group.id,
+                        groupName: group.name,
+                      })
+                    }
                     className="flex items-center justify-center p-3 mr-1 text-gray-400 hover:text-red-500"
                     title="Verwijderen"
                   >
                     <X className="h-4 w-4" />
                   </button>
-                </div>
-
-                <div>
-                  {groupItems.length > 0 && (
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleDragEnd(group.id)}
-                    >
-                      <SortableContext
-                        items={groupItems.map(i => i.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        {groupItems.map(item => (
-                          <SortableItem
-                            key={item.id}
-                            item={item}
-                            online={online}
-                            onToggle={toggleChecked}
-                            onDelete={deleteItem}
-                            onAmountSave={saveAmount}
-                            onNameSave={saveName}
-                          />
-                        ))}
-                      </SortableContext>
-                    </DndContext>
-                  )}
-                  {renderInlineAddRow(group.id, groupItems.length > 0)}
-                </div>
+                )}
+                {isDefault && <div className="mr-1" />}
               </div>
-            )
-          })}
-        </section>
+
+              <div>
+                {groupItems.length > 0 && (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd(group.id)}
+                  >
+                    <SortableContext
+                      items={groupItems.map(i => i.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {groupItems.map(item => (
+                        <SortableItem
+                          key={item.id}
+                          item={item}
+                          online={online}
+                          onToggle={toggleChecked}
+                          onDelete={deleteItem}
+                          onAmountSave={saveAmount}
+                          onNameSave={saveName}
+                          canMove={groups.length > 1}
+                          onMoveRequest={requestMoveItem}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                )}
+                {renderInlineAddRow(group.id, groupItems.length > 0)}
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Nieuwe groep — draft-card met naam-input */}
+        {addingGroup && (
+          <div className="bg-white rounded-2xl border border-honey-300">
+            <div className="flex items-center border-b border-gray-100">
+              <div className="flex-1 flex items-center gap-2 pl-4 py-2.5 min-w-0">
+                <input
+                  ref={newGroupInputRef}
+                  autoFocus
+                  value={newGroupName}
+                  onChange={e => setNewGroupName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') createGroup()
+                    if (e.key === 'Escape') {
+                      setAddingGroup(false)
+                      setNewGroupName('')
+                    }
+                  }}
+                  onBlur={createGroup}
+                  placeholder="Naam van de groep"
+                  className="flex-1 bg-transparent text-[15px] text-gray-900 font-medium placeholder-gray-400 outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => {
+                  setAddingGroup(false)
+                  setNewGroupName('')
+                }}
+                className="flex items-center justify-center p-3 mr-1 text-gray-400 hover:text-gray-700"
+                title="Annuleren"
+                aria-label="Annuleren"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2 pl-1 pr-3 py-2.5">
+              <span className="flex items-center justify-center p-3 shrink-0" aria-hidden>
+                <Plus className="h-4 w-4 text-gray-200" strokeWidth={2.5} />
+              </span>
+              <span className="flex-1 text-[15px] text-gray-300 italic">
+                Typ eerst een naam…
+              </span>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* FAB — nieuwe groep */}
+      {!addingGroup && (
+        <button
+          type="button"
+          onClick={startAddGroup}
+          className="fixed z-30 right-4 lg:right-8 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:bottom-8 flex items-center justify-center w-14 h-14 rounded-full bg-honey-500 text-honey-950 shadow-lg shadow-honey-900/30 hover:bg-honey-600 active:scale-95 transition-all touch-manipulation"
+          aria-label="Nieuwe groep"
+          title="Nieuwe groep"
+        >
+          <FolderPlus className="h-6 w-6" strokeWidth={2.5} />
+        </button>
       )}
 
       {/* Opschoon-bevestiging */}
@@ -1225,6 +1264,40 @@ export default function LijstPage() {
         </div>
       </Modal>
 
+      {/* Verplaats-sheet — kies doelgroep voor een item */}
+      <BottomSheet
+        open={moveItem !== null}
+        onClose={() => setMoveItem(null)}
+        title={moveItem ? `'${moveItem.name}' verplaatsen` : ''}
+      >
+        {moveItem && (
+          <div className="space-y-3">
+            <p className="text-xs text-gray-500">
+              Kies waar het naartoe moet:
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {groups
+                .filter(g => g.id !== moveItem.group_id)
+                .map(g => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => moveItemToGroup(moveItem.id, g.id)}
+                    className="flex items-center justify-between px-4 py-3 rounded-xl bg-gray-50 hover:bg-honey-50 text-left touch-manipulation transition-colors"
+                  >
+                    <span className="text-[15px] text-gray-900 font-medium">
+                      {g.name}
+                    </span>
+                    <span className="text-[11px] text-gray-400 tabular-nums">
+                      ({itemsByGroup[g.id]?.length ?? 0})
+                    </span>
+                  </button>
+                ))}
+            </div>
+          </div>
+        )}
+      </BottomSheet>
+
       {/* Offline / sync toast */}
       {offlineToast && (
         <div
@@ -1235,50 +1308,67 @@ export default function LijstPage() {
         </div>
       )}
 
-      {/* Groep-actie bevestiging */}
+      {/* Groep verwijderen — bevestiging */}
       <Modal
-        open={groupConfirm !== null}
-        onClose={() => setGroupConfirm(null)}
-        title={
-          groupConfirm?.action === 'merge'
-            ? 'Samenvoegen met hoofdlijst'
-            : 'Groep verwijderen'
-        }
+        open={deleteGroupConfirm !== null}
+        onClose={() => setDeleteGroupConfirm(null)}
+        title="Groep verwijderen"
       >
-        {groupConfirm && (
+        {deleteGroupConfirm && (
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              {groupConfirm.action === 'merge' ? (
-                <>
-                  Items uit <span className="font-semibold">{groupConfirm.groupName}</span>{' '}
-                  worden verplaatst naar hoofdlijst. Zelfde producten worden samengevoegd. De groep wordt daarna verwijderd.
-                </>
-              ) : (
-                <>
-                  <span className="font-semibold">{groupConfirm.groupName}</span> en alle items erin worden verwijderd.
-                  {(itemsByGroup[groupConfirm.groupId]?.length ?? 0) > 0 &&
-                    ` Dit zijn ${itemsByGroup[groupConfirm.groupId].length} items.`}
-                </>
-              )}
+              <span className="font-semibold">{deleteGroupConfirm.groupName}</span> en alle items erin worden verwijderd.
+              {(itemsByGroup[deleteGroupConfirm.groupId]?.length ?? 0) > 0 &&
+                ` Dit zijn ${itemsByGroup[deleteGroupConfirm.groupId].length} items.`}
             </p>
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setGroupConfirm(null)}>
+              <Button variant="outline" onClick={() => setDeleteGroupConfirm(null)}>
                 Annuleren
               </Button>
               <Button
-                variant={groupConfirm.action === 'delete' ? 'danger' : 'primary'}
-                onClick={() =>
-                  groupConfirm.action === 'merge'
-                    ? mergeGroup(groupConfirm.groupId)
-                    : deleteGroup(groupConfirm.groupId)
-                }
+                variant="danger"
+                onClick={() => deleteGroup(deleteGroupConfirm.groupId)}
               >
-                {groupConfirm.action === 'merge' ? 'Samenvoegen' : 'Verwijderen'}
+                Verwijderen
               </Button>
             </div>
           </div>
         )}
       </Modal>
+
+      {/* Groep samenvoegen — doelgroep-picker */}
+      <BottomSheet
+        open={mergeSource !== null}
+        onClose={() => setMergeSource(null)}
+        title={mergeSource ? `'${mergeSource.name}' samenvoegen met…` : ''}
+      >
+        {mergeSource && (
+          <div className="space-y-3">
+            <p className="text-xs text-gray-500">
+              Kies de groep waar de items naartoe gaan. Zelfde producten worden opgeteld, {mergeSource.name} wordt daarna verwijderd.
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {groups
+                .filter(g => g.id !== mergeSource.id)
+                .map(g => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => mergeGroup(mergeSource.id, g.id)}
+                    className="flex items-center justify-between px-4 py-3 rounded-xl bg-gray-50 hover:bg-honey-50 text-left touch-manipulation transition-colors"
+                  >
+                    <span className="text-[15px] text-gray-900 font-medium">
+                      {g.name}
+                    </span>
+                    <span className="text-[11px] text-gray-400 tabular-nums">
+                      ({itemsByGroup[g.id]?.length ?? 0})
+                    </span>
+                  </button>
+                ))}
+            </div>
+          </div>
+        )}
+      </BottomSheet>
     </div>
   )
 }

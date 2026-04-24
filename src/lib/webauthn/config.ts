@@ -1,6 +1,6 @@
 import 'server-only'
 
-const RP_NAME = 'Recepten van Anne'
+const RP_NAME = "Anne's keuken"
 
 export function getWebAuthnConfig() {
   const rpID = process.env.WEBAUTHN_RP_ID

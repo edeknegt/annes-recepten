@@ -1,5 +1,5 @@
 -- =============================================================================
--- Annes Recepten - Per-credential approval
+-- Anne's keuken - Per-credential approval
 -- =============================================================================
 -- Nieuwe passkeys worden NIET automatisch toegelaten. Na registratie moet je
 -- in Supabase de rij in webauthn_credentials op approved = true zetten

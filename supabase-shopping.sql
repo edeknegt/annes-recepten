@@ -1,5 +1,5 @@
 -- =============================================================================
--- Annes Recepten - Shopping List Schema
+-- Anne's keuken - Shopping List Schema
 -- =============================================================================
 -- Boodschappenlijst met schap-categorieen, producten-catalogus, groepen,
 -- items en herhaalregels. Draai dit NA supabase-schema.sql.

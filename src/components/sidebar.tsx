@@ -87,8 +87,7 @@ export function Sidebar() {
             <Image src="/erik-anne-drinks.png" alt="Erik en Anne" width={40} height={40} className="w-full h-full object-cover" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900">Recepten</h1>
-            <p className="text-xs text-gray-500 -mt-0.5">van Anne</p>
+            <h1 className="text-lg font-bold text-gray-900">Anne&apos;s keuken</h1>
           </div>
         </div>
 
